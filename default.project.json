@@ -1,0 +1,53 @@
+{
+    "name": "Plots",
+    "tree": {
+      "$className": "DataModel",
+      "ReplicatedStorage": {
+        "$className": "ReplicatedStorage",
+        "$ignoreUnknownInstances": true,
+        "$path": "framework/src/ReplicatedStorage",
+        "Game": {
+          "$path": "defaults/ReplicatedStorage"
+        },
+        "MiniGame": {
+          "$path": "src/ReplicatedStorage"
+        }
+      },
+      "ReplicatedFirst": {
+        "$className": "ReplicatedFirst",
+        "$ignoreUnknownInstances": true,
+        "Game": {
+          "$path": "defaults/ReplicatedFirst"
+        },
+        "MiniGame": {
+          "$path": "src/ReplicatedFirst"
+        }
+      },
+      "ServerScriptService": {
+        "$className": "ServerScriptService",
+        "$ignoreUnknownInstances": true,
+        "$path": "framework/src/ServerScriptService",
+        "Game": {
+          "$path": "defaults/ServerScriptService"
+        },
+        "MiniGame": {
+          "$path": "src/ServerScriptService"
+        }
+      },
+      "StarterPlayer": {
+        "$className": "StarterPlayer",
+        "StarterPlayerScripts": {
+          "$className": "StarterPlayerScripts",
+          "$ignoreUnknownInstances": true,
+          "$path": "framework/src/StarterPlayer/StarterPlayerScripts",
+          "Game": {
+            "$path": "defaults/StarterPlayer/StarterPlayerScripts"
+          },
+          "MiniGame": {
+            "$path": "src/StarterPlayer/StarterPlayerScripts"
+          }
+        },
+        "$ignoreUnknownInstances": true
+      }
+    }
+  }
