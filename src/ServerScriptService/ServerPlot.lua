@@ -5,13 +5,14 @@ local ServerScriptService = game:GetService("ServerScriptService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 
-local Player = require(ReplicatedStorage.Library.Player)
 local Event = require(ReplicatedStorage.Library.Modules.Event)
 local FishTypes = require(ReplicatedStorage.Game.GameLibrary.Types.Fish)
 local PlotTypes = require(ReplicatedStorage.Game.GameLibrary.Types.Plots)
+local Directory = require(ReplicatedStorage.Game.GameLibrary.Directory)
 local Saving = require(ServerScriptService.Library.Saving)
 local Network = require(ServerScriptService.Library.Network)
 local Functions = require(ReplicatedStorage.Library.Functions)
+local Assert = require(ReplicatedStorage.Library.Assert)
 
 type Fields<self> = {
 	Id: number,
@@ -36,6 +37,7 @@ type Fields<self> = {
 
 	Destroying: Event.EventInstance,
 	Heartbeat: Event.EventInstance,
+	PedestalAdded: Event.EventInstance,
 	FishAdded: Event.EventInstance,
 	FishRemoved: Event.EventInstance
 }
@@ -49,11 +51,17 @@ type Functions<self> = {
 	GetCFrame: (self) -> CFrame,
 	GetModel: (self) -> Model,
 
-	CreateFish: (self, fish: FishTypes.data_schema, index: number) -> (),
-	GetFish: (self, index: number) -> FishTypes.data_schema,
+	CreateFish: (self, fish: FishTypes.data_schema, index: number) -> PlotTypes.Fish?,
+	SetFish: (self, fish: PlotTypes.Fish, index: number) -> PlotTypes.Fish?,
+	GetFish: (self, index: number) -> PlotTypes.Fish?,
+	GetFishLevel: (self, index: number) -> number?,
 	DeleteFish: (self, index: number) -> (),
-	GetAllFish: (self) -> {FishTypes.data_schema},
-	ClaimEarnings: (self, index: number) -> (),
+	GetMoneyPerSecond: (self, index: number) -> number?,
+	GetUpgradeCost: (self, index: number) -> number?,
+	GetSellPrice: (self, index: number) -> number?,
+	GetAllFish: (self) -> {[string]: PlotTypes.Fish},
+
+	ClaimEarnings: (self, index: number) -> (boolean, number?),
 	SellFish: (self, index: number) -> (),
 	PickupFish: (self, index: number) -> (),
 	GetMoney: (self) -> number,
@@ -62,7 +70,7 @@ type Functions<self> = {
 	Join: (self, player: Player) -> boolean,
 	Unjoin: (self, player: Player) -> boolean,
 	IsJoined: (self, player: Player) -> boolean,
-	GetSubscriptions: (self) -> {Player},
+	GetJoins: (self) -> {Player},
 	Broadcast: (self, packet: PlotTypes.Packet) -> (),
 	OwnerInvoked: (self, name: string, callback: (...any) -> ...any) -> (),
 	OtherInvoked: (self, name: string, callback: (Player, ...any) -> ...any) -> (),
@@ -75,29 +83,300 @@ type Functions<self> = {
 	SessionSet: <T>(self, key: string, val: T?) -> T?,
 	SessionChanged: <T>(self, key: string) -> Event.EventInstance,
 	Local: <T>(self, key: any) -> T,
-	LocalSet: <T>(self, key: any, val: T?) -> T?
+	LocalSet: <T>(self, key: any, val: T?) -> T?,
+
+	RunHeartbeat: (self, dt: number) -> (),
 }
 export type Type = Fields<Type> & Functions<Type>
 
 local prototype = {}::(Functions<Type>)
 
+-- Forward declarations for globals used across methods
+local GlobalById: {[number]: Type} = {}
+local GlobalByPlayer: {[Player]: Type} = {}
+local GlobalPlayerPacketQueues: {[Player]: {PlotTypes.Packet}} = {}
+
+local FakeNil = {}
+local IdCounter = 0
+local Created = Event.new()
+local Destroying = Event.new()
+
+function prototype:RunHeartbeat(dt: number)
+	self.Heartbeat:FireAsync(dt)
+
+	local saveUpdates = ComputeUpdate(self.SaveVariables, self.SaveVariableUpdates)
+	local sessionUpdates = ComputeUpdate(self.SessionVariables, self.SessionVariableUpdates)
+	if next(saveUpdates) or next(sessionUpdates) then
+		local packet: PlotTypes.Packet = {
+			PacketType = "Update",
+			PlotId = self.Id,
+			Payload = {
+				Save = saveUpdates,
+				Session = sessionUpdates,
+			},
+		}
+		self:Broadcast(packet)
+	end
+end
+
 function prototype:IsDestroyed()
 	return self.Destroyed
+end
+
+function prototype:Destroy()
+    if self.Destroyed then
+        return false
+    end
+    self.Destroyed = true
+    -- Destroy model if present
+    local model = self.Model
+    if model and model.Parent then
+        pcall(function()
+            model:Destroy()
+        end)
+    end
+	for _, player in pairs(self:GetJoins()) do
+		self:Unjoin(player)
+	end
+    -- Remove from global indices
+    if GlobalById and GlobalById[self.Id] == self then
+        GlobalById[self.Id] = nil
+    end
+    if GlobalByPlayer and GlobalByPlayer[self.Owner] == self then
+        GlobalByPlayer[self.Owner] = nil
+    end
+	-- Fire destroying signal
+	self.Destroying:FireAsync(self)
+	Destroying:FireAsync(self)
+    return true
+end
+
+function prototype:GetId()
+    return self.Id
+end
+
+function prototype:GetOwner()
+    return self.Owner
+end
+
+function prototype:GetCFrame()
+    return self.CFrame
+end
+
+function prototype:GetModel()
+    return self.Model
+end
+
+function prototype:CreateFish(fishData: FishTypes.data_schema, index: number): PlotTypes.Fish?
+    local fishes = self:GetAllFish()
+	if fishes[tostring(index)] then
+		return nil
+	end
+
+	local now = workspace:GetServerTimeNow()
+	local fish: PlotTypes.Fish = {
+		UID = fishData.UID,
+		FishData = fishData,
+		FishId = fishData.FishId,
+		LastClaimTime = now,
+		CreateTime = now,
+		OfflineEarnings = 0,
+	}
+	self:SetFish(fish, index)
+	return fish
+end
+
+function prototype:SetFish(fish: PlotTypes.Fish, index: number): PlotTypes.Fish?
+    local fishes = self:GetAllFish()
+	if fishes[tostring(index)] then
+		return nil
+	end
+	fishes[tostring(index)] = fish
+	self.FishAdded:FireAsync(fish)
+	fishes[tostring(index)] = fish
+	self:SaveSet("Fish", fishes)
+	return fish
+end
+
+function prototype:DeleteFish(index: number)
+    local fishes = self:GetAllFish()
+	if not fishes[tostring(index)] then
+		return
+	end
+	fishes[tostring(index)] = nil
+	self:SaveSet("Fish", fishes)
+end
+
+function prototype:GetFish(index: number): PlotTypes.Fish?
+    local stringIndex = tostring(index)
+	local fishes = self:GetAllFish()
+	return fishes[stringIndex]
+end
+
+function prototype:GetFishLevel(index: number): number?
+    local fish = self:GetFish(index)
+    if not fish then
+        return nil
+    end
+    return fish.FishData.Level
+end
+
+function prototype:GetMoneyPerSecond(index: number): number?
+	local fish = self:GetFish(index)
+	if not fish then
+		return nil
+	end
+    local dir = Directory.Fish[fish.FishId]
+    return dir.MoneyPerSecond * fish.FishData.Level
+end
+
+function prototype:GetUpgradeCost(index: number): number?
+	local fish = self:GetFish(index)
+	if not fish then
+		return nil
+	end
+    local fishLevel = self:GetFishLevel(index)
+	if not fishLevel then
+		return nil
+	end
+    local dir = Directory.Fish[fish.FishId]
+    return math.pow(dir.BaseUpgradeCost, fishLevel)
+end
+
+function prototype:GetSellPrice(index: number): number?
+	local moneyPerSecond = self:GetMoneyPerSecond(index)
+	if not moneyPerSecond then
+		return nil
+	end
+    return math.ceil(moneyPerSecond * 20)
+end
+
+function prototype:GetAllFish(): {[string]: PlotTypes.Fish}
+	local fishes = self:Save("Fish")
+    if not fishes then
+        return {}
+    end
+	return fishes
+end
+
+function prototype:ClaimEarnings(index: number): (boolean, number?)
+    local fish = self:GetFish(index)
+    if not fish then
+        return false
+    end
+    local dir = Directory.Fish[fish.FishId]
+    if not dir then
+        return false
+    end
+    local now = workspace:GetServerTimeNow()
+    local last = fish.LastClaimTime or now
+    local dt = math.max(0, now - last)
+    if dt < 1 then
+        return false
+    end
+    local earned = math.ceil(dir.MoneyPerSecond * dt)
+    fish.LastClaimTime = now
+	fish.OfflineEarnings = 0
+    self:SetFish(fish, index)
+    self:AddMoney(earned)
+	return true, earned
+end
+
+function prototype:SellFish(index: number)
+	local sellPrice = self:GetSellPrice(index)
+	if not sellPrice then
+		return
+	end
+    self:ClaimEarnings(index)
+	self:AddMoney(sellPrice)
+    self:DeleteFish(index)
+end
+
+function prototype:PickupFish(index: number)
+    local fish = self:GetFish(index)
+    if not fish then
+        return
+    end
+    self:DeleteFish(index)
+end
+
+function prototype:GetMoney(): number
+    return self:Save("Money") or 0
+end
+
+function prototype:AddMoney(amount: number)
+    local money = (self:Save("Money") or 0) + amount
+    self:SaveSet("Money", money)
+end
+
+function prototype:Join(player: Player): boolean
+	if self:IsDestroyed() then
+		return false
+	end
+	if self:IsJoined(player) then
+		return false
+	end
+	self.Joins[player] = true
+	local packet: PlotTypes.Packet = {
+		PacketType = "Join",
+		PlotId = self:GetId(),
+		Data = {
+			Owner = self:GetOwner(),
+			CFrame = self:GetCFrame(),
+			Model = self:GetModel(),
+			SaveVariables = self:Save("Variables"),
+			SessionVariables = self:Session("Variables"),
+		}
+	}
+	SendPacket(player, packet)
+	return true
+end
+
+function prototype:Unjoin(player: Player): boolean
+	if not self:IsJoined(player) then
+		return false
+	end
+	self.Joins[player] = nil
+	local packet: PlotTypes.Packet = {
+		PacketType = "Leave",
+		PlotId = self:GetId(),
+		Data = {
+			Owner = self:GetOwner(),
+		}
+	}
+	SendPacket(player, packet)
+	return true
+end
+
+function prototype:IsJoined(player: Player): boolean
+	return self.Joins[player] ~= nil
+end
+
+function prototype:GetJoins(): {Player}
+	return Functions.Keys(self.Joins)
+end
+
+function prototype:Broadcast(packet: PlotTypes.Packet)
+	for _, player in pairs(self:GetJoins()) do
+		SendPacket(player, packet)
+	end
+end
+
+function prototype:OwnerInvoked(name: string, callback: (...any) -> ...any)
+	self.OwnerInvokeHandlers[name] = callback
+end
+
+function prototype:OtherInvoked(name: string, callback: (Player, ...any) -> ...any)
+	self.OtherInvokeHandlers[name] = callback
+end
+
+function prototype:Invoked(name: string, callback: (Player, ...any) -> ...any)
+	self.InvokeHandlers[name] = callback
 end
 
 local Metatable = table.freeze({ __index = table.freeze(prototype) })
 
 local module = {}
-
-local FakeNil = {}
-
-local IdCounter = 0
-
-local GlobalById: {[number]: Type} = {}
-local GlobalByPlayer: {[Player]: Type} = {}
-local GlobalPlayerPacketQueues: {[Player]: {PlotTypes.Packet}} = {}
-
-local Created = Event.new()
 
 function module.new(owner: Player, blueprint: Model, cFrame: CFrame): Type
 	local save = Saving.Get(owner)
@@ -138,6 +417,7 @@ function module.new(owner: Player, blueprint: Model, cFrame: CFrame): Type
 		Destroying = Event.new(),
 		Heartbeat = Event.new(),
 		FishAdded = Event.new(),
+		PedestalAdded = Event.new(),
 		FishRemoved = Event.new()
 	}
 	
@@ -230,8 +510,8 @@ function PlayerRemoving(player: Player)
 	if inst then
 		inst:Destroy()
 	end
-	for _, inst in pairs(GlobalByPlayer) do
-		inst:Unjoin(player)
+	for _, otherIsnt in pairs(GlobalByPlayer) do
+		otherIsnt:Unjoin(player)
 	end
 	GlobalPlayerPacketQueues[player] = nil
 end
@@ -240,6 +520,33 @@ Players.PlayerRemoving:Connect(PlayerRemoving)
 Saving.SaveAdded:Connect(function(player) 
 	for _, inst in pairs(GlobalById) do 
 		inst:Join(player)
+	end
+end)
+
+Network.Invoked("Plots_Invoke", function(player, id: number, name: string, ...: any): (...any)
+	Assert.IntegerPositive(id)
+	Assert.String(name)
+
+	local inst = module.GetById(id)
+	if not inst or not inst:IsJoined(player) then
+		return
+	end
+	local globalHandler = inst.InvokeHandlers[name]
+	if globalHandler then 
+		return globalHandler(player, ...)
+	end
+	if inst:GetOwner() == player then
+		local handler = inst.OwnerInvokeHandlers[name]
+		if not handler then
+			error(`UnhandledOwnerInvoke: {name}`)
+		end
+		return handler(...)
+	else
+		local handler = inst.OtherInvokeHandlers[name]
+		if not handler then
+			error(`UnhandledOtherInvoke: {name}`)
+		end
+		return handler(player, ...)
 	end
 end)
 
