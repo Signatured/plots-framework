@@ -124,7 +124,6 @@ function prototype:SaveSet(key: string, val: any?)
 	if not self.SaveVariableUpdates[key] then
 		self.SaveVariableUpdates[key] = oldVal ~= nil and oldVal or FakeNil
 	end
-	table.insert(self.SaveVariableUpdates[key], val)
 
     return oldVal
 end
@@ -159,7 +158,6 @@ function prototype:SessionSet(key: string, val: any?)
 	if not self.SessionVariableUpdates[key] then
 		self.SessionVariableUpdates[key] = oldVal ~= nil and oldVal or FakeNil
 	end
-	table.insert(self.SessionVariableUpdates[key], val)
 
 	return oldVal
 end
@@ -195,7 +193,7 @@ function prototype:RunHeartbeat(dt: number)
 		local packet: PlotTypes.Packet = {
 			PacketType = "Update",
 			PlotId = self.Id,
-			Payload = {
+			Data = {
 				Save = saveUpdates,
 				Session = sessionUpdates,
 			},
@@ -604,7 +602,7 @@ RunService.Heartbeat:Connect(function(deltaTime)
 	for id, inst in pairs(GlobalById) do
 		if not inst:IsDestroyed() then
 			pcall(function()
-				inst.Heartbeat:FireAsync(deltaTime)
+				inst:RunHeartbeat(deltaTime)
 			end)
 		end
 		if inst:IsDestroyed() then

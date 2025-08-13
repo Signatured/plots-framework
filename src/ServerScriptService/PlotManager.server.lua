@@ -32,6 +32,12 @@ function SetupTemplates()
         local playerBillboard = model:WaitForChild("PlayerBillboard"):WaitForChild("BillboardGui")::BillboardGui
         playerBillboard.Enabled = false
 
+        local pedestals = model:WaitForChild("Pedestals")::Model
+        pedestals:Destroy()
+
+        local trashcan = model:WaitForChild("TrashCan")::BasePart
+        trashcan:Destroy()
+
 		model:PivotTo(loc.CFrame)
 		model.Parent = templateFolder
 		templatePlots[i] = model
@@ -142,6 +148,7 @@ function SetupPlayer(player: Player)
         end
 
         plot:SaveSet("Pedestals", pedestalCount + 1)
+        print(plot:Save("Pedestals"))
         return true
     end)
 
