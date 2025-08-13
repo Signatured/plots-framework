@@ -13,6 +13,11 @@ local PLOT_COUNT = GameSettings.PlotCount
 local claimedPlots: {[number]: Player} = {}
 local templatePlots: {[number]: Model} = {}
 
+task.spawn(function()
+    local blueprint = workspace:WaitForChild("PlotBlueprint", 9999)
+    blueprint.Parent = ReplicatedStorage
+end)
+
 function SetupTemplates()
     local locations = workspace:WaitForChild("__THINGS"):WaitForChild("PlotLocations")
     local templateFolder = workspace:WaitForChild("__THINGS"):WaitForChild("PlotTemplates")
@@ -26,6 +31,8 @@ function SetupTemplates()
 		model.Parent = templateFolder
 		templatePlots[i] = model
     end
+
+    print(templatePlots)
 end
 
 function UpdateTemplates()
@@ -142,8 +149,3 @@ end)
 
 SetupTemplates()
 UpdateTemplates()
-
-task.spawn(function()
-    local blueprint = workspace:WaitForChild("PlotBlueprint", 9999)
-    blueprint.Parent = ReplicatedStorage
-end)
