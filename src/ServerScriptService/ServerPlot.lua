@@ -65,7 +65,8 @@ type Functions<self> = {
 	SellFish: (self, index: number) -> (boolean, number?),
 	PickupFish: (self, index: number) -> boolean,
 	GetMoney: (self) -> number,
-	AddMoney: (self, amount: number) -> (),
+	AddMoney: (self, amount: number) -> boolean,
+	CanAfford: (self, amount: number) -> boolean,
 
 	Join: (self, player: Player) -> boolean,
 	Unjoin: (self, player: Player) -> boolean,
@@ -399,6 +400,12 @@ function prototype:AddMoney(amount: number)
 
     local money = math.max(0, (self:Save("Money") or 0) + amount)
     self:SaveSet("Money", money)
+	return true
+end
+
+function prototype:CanAfford(amount: number): boolean
+	Assert.Number(amount)
+	return self:GetMoney() >= amount
 end
 
 function prototype:Join(player: Player): boolean

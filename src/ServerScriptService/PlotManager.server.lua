@@ -7,6 +7,7 @@ local GameSettings = require(game.ServerScriptService.Game.GameServerLibrary.Gam
 local Saving = require(game.ServerScriptService.Library.Saving)
 local ServerPlot = require(game.ServerScriptService.Plot.ServerPlot)
 local Assert = require(game.ReplicatedStorage.Library.Assert)
+local PlotTypes = require(game.ReplicatedStorage.Game.GameLibrary.Types.Plots)
 local PivotPlayer = require(game.ReplicatedStorage.Library.Functions.PivotPlayer)
 
 local PLOT_COUNT = GameSettings.PlotCount
@@ -118,6 +119,30 @@ function SetupPlayer(player: Player)
 
         local success = plot:PickupFish(index)
         return success
+    end)
+
+    plot:OwnerInvoked("BuyPedestal", function(index: number)
+        Assert.IntegerPositive(index)
+
+        local pedestalCount = plot:Save("Pedestals")::number
+        if index ~= pedestalCount + 1 then
+            return false
+        end
+
+        local cost = PlotTypes.PedestalCost(index)
+        local canAfford = plot:CanAfford(cost)
+
+        if not canAfford then
+            return false, "You cannot afford this!"
+        end
+
+        local success = plot:AddMoney(-cost)
+        if not success then
+            return false
+        end
+
+        plot:SaveSet("Pedestals", pedestalCount + 1)
+        return true
     end)
 
     local spawnPart = plot:GetModel():WaitForChild("Spawn")::BasePart
