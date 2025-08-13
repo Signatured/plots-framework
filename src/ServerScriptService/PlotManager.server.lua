@@ -1,6 +1,7 @@
 --!strict
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GameSettings = require(game.ServerScriptService.Game.GameServerLibrary.GameSettings)
 local Saving = require(game.ServerScriptService.Library.Saving)
@@ -13,11 +14,11 @@ local claimedPlots: {[number]: Player} = {}
 local templatePlots: {[number]: Model} = {}
 
 function SetupTemplates()
-    local locations = workspace:WaitForChild("__THINGS"):WaitForChild("PlotLocations"):GetChildren()
+    local locations = workspace:WaitForChild("__THINGS"):WaitForChild("PlotLocations")
     local templateFolder = workspace:WaitForChild("__THINGS"):WaitForChild("PlotTemplates")
 
     for i = 1, PLOT_COUNT do
-		local model = workspace:WaitForChild("PlotBlueprint"):Clone()
+		local model = ReplicatedStorage:WaitForChild("PlotBlueprint", 9999):Clone()
 		local loc = assert(locations:WaitForChild(tostring(i)))::BasePart
 		loc.Transparency = 1
 		loc.CanCollide = false 
@@ -54,7 +55,7 @@ function GetAvailablePlot(): number?
 end
 
 function ClaimPlot(player: Player): CFrame?
-    local locations = workspace:WaitForChild("__THINGS"):WaitForChild("PlotLocations"):GetChildren()
+    local locations = workspace:WaitForChild("__THINGS"):WaitForChild("PlotLocations")
 
     local index = GetAvailablePlot()
     if not index then
@@ -84,7 +85,7 @@ function SetupPlayer(player: Player)
 
     UpdateTemplates()
 
-    local blueprint = workspace:WaitForChild("PlotBlueprint"):Clone()
+    local blueprint = ReplicatedStorage:WaitForChild("PlotBlueprint", 9999):Clone()
     local plot = ServerPlot.new(player, blueprint, cframe)
 
     plot:OwnerInvoked("ClaimEarnings", function(index: number)
@@ -113,6 +114,11 @@ function SetupPlayer(player: Player)
 	task.delay(0.25, function()
 		PivotPlayer(player, teleportCFrame)
 	end)
+    player.CharacterAdded:Connect(function(character: Model)
+        task.delay(0.25, function()
+            PivotPlayer(player, teleportCFrame)
+        end)
+    end)
 end
 
 function RemovePlayer(player: Player)
@@ -136,3 +142,8 @@ end)
 
 SetupTemplates()
 UpdateTemplates()
+
+task.spawn(function()
+    local blueprint = workspace:WaitForChild("PlotBlueprint", 9999)
+    blueprint.Parent = ReplicatedStorage
+end)

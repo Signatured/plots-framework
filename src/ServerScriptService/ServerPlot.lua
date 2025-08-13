@@ -76,14 +76,14 @@ type Functions<self> = {
 	OtherInvoked: (self, name: string, callback: (Player, ...any) -> ...any) -> (),
 	Invoked: (self, name: string, callback: (Player, ...any) -> ...any) -> (),
 
-	Save: <T>(self, key: string) -> T,
-	SaveSet: <T>(self, key: string, val: T?) -> T?,
-	SaveChanged: <T>(self, key: string) -> Event.EventInstance,
-	Session: <T>(self, key: string) -> T,
-	SessionSet: <T>(self, key: string, val: T?) -> T?,
-	SessionChanged: <T>(self, key: string) -> Event.EventInstance,
-	Local: <T>(self, key: any) -> T,
-	LocalSet: <T>(self, key: any, val: T?) -> T?,
+	Save: (self, key: string) -> any,
+	SaveSet: (self, key: string, val: any?) -> any?,
+	SaveChanged: (self, key: string) -> Event.EventInstance,
+	Session: (self, key: string) -> any,
+	SessionSet: (self, key: string, val: any?) -> any?,
+	SessionChanged: (self, key: string) -> Event.EventInstance,
+	Local: (self, key: any) -> any,
+	LocalSet: (self, key: any, val: any?) -> any?,
 
 	RunHeartbeat: (self, dt: number) -> (),
 }
@@ -100,6 +100,89 @@ local FakeNil = {}
 local IdCounter = 0
 local Created = Event.new()
 local Destroying = Event.new()
+
+function prototype:Save(key: string)
+    return Functions.DeepCopy(self.SaveVariables[key])
+end
+
+function prototype:SaveSet(key: string, val: any?)
+    local oldVal = self.SaveVariables[key]
+
+	if Functions.DeepEquals(oldVal, val) then
+		return oldVal
+	end
+
+    self.SaveVariables[key] = val
+
+	local event = self.SaveVariableChanged[key]
+	if event then
+		event:FireAsync(val, oldVal)
+	end
+
+	if not self.SaveVariableUpdates[key] then
+		self.SaveVariableUpdates[key] = oldVal ~= nil and oldVal or FakeNil
+	end
+	table.insert(self.SaveVariableUpdates[key], val)
+
+    return oldVal
+end
+
+function prototype:SaveChanged(key: string)
+	local event = self.SaveVariableChanged[key]
+	if not event then
+		event = Event.new()
+		self.SaveVariableChanged[key] = event
+	end
+	return event
+end
+
+function prototype:Session(key: string)
+    return Functions.DeepCopy(self.SessionVariables[key])
+end
+
+function prototype:SessionSet(key: string, val: any?)
+	local oldVal = self.SessionVariables[key]
+
+	if Functions.DeepEquals(oldVal, val) then
+		return oldVal
+	end
+
+	self.SessionVariables[key] = val
+
+	local event = self.SessionVariableChanged[key]
+	if event then
+		event:FireAsync(val, oldVal)
+	end
+
+	if not self.SessionVariableUpdates[key] then
+		self.SessionVariableUpdates[key] = oldVal ~= nil and oldVal or FakeNil
+	end
+	table.insert(self.SessionVariableUpdates[key], val)
+
+	return oldVal
+end
+
+function prototype:SessionChanged(key: string)
+	local event = self.SessionVariableChanged[key]
+	if not event then
+		event = Event.new()
+		self.SessionVariableChanged[key] = event
+	end
+	return event
+end
+
+function prototype:Local(key: any)
+    return self.LocalVariables[key]
+end
+
+function prototype:LocalSet(key: any, val: any?)
+	local oldVal = self.LocalVariables[key]
+	if Functions.DeepEquals(oldVal, val) then
+		return oldVal
+	end
+	self.LocalVariables[key] = val
+	return oldVal
+end	
 
 function prototype:RunHeartbeat(dt: number)
 	self.Heartbeat:FireAsync(dt)
@@ -327,13 +410,13 @@ function prototype:Join(player: Player): boolean
 	self.Joins[player] = true
 	local packet: PlotTypes.Packet = {
 		PacketType = "Join",
-		PlotId = self:GetId(),
+		PlotId = self.Id,
 		Data = {
-			Owner = self:GetOwner(),
-			CFrame = self:GetCFrame(),
-			Model = self:GetModel(),
-			SaveVariables = self:Save("Variables"),
-			SessionVariables = self:Session("Variables"),
+			Owner = self.Owner,
+			CFrame = self.CFrame,
+			Model = self.Model,
+			SaveVariables = self.SaveVariables,
+			SessionVariables = self.SessionVariables,
 		}
 	}
 	SendPacket(player, packet)
@@ -460,6 +543,9 @@ function DispatchPackets()
 	for player, q in pairs(GlobalPlayerPacketQueues) do
 		if not player.Parent then
 			GlobalPlayerPacketQueues[player] = nil
+			continue
+		end
+		if not player:GetAttribute("Loaded") then
 			continue
 		end
 		if next(q) then

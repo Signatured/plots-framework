@@ -1,0 +1,350 @@
+--!strict
+
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+
+local Event = require(ReplicatedStorage.Library.Modules.Event)
+local Network = require(ReplicatedStorage.Library.Client.Network)
+local Functions = require(ReplicatedStorage.Library.Functions)
+
+local PlotTypes = require(ReplicatedStorage.Game.GameLibrary.Types.Plots)
+
+type Fields<self> = {
+    Id: number,
+    Owner: Player,
+    CFrame: CFrame,
+    Model: Model?,
+    Destroyed: boolean,
+    Created: number,
+
+    NetworkHandlers: {[string]: (self, ...any) -> (...any)},
+
+    SaveVariables: {[string]: any},
+    SaveVariableChanged: {[string]: Event.EventInstance},
+    SessionVariables: {[string]: any},
+    SessionVariableChanged: {[string]: Event.EventInstance},
+    LocalVariables: {[any]: any},
+
+    ModelAdded: Event.EventInstance,
+    Destroying: Event.EventInstance,
+    Heartbeat: Event.EventInstance,
+    RenderStepped: Event.EventInstance,
+}
+
+type Functions<self> = {
+    GetId: (self) -> number,
+    GetOwner: (self) -> Player?,
+    GetCFrame: (self) -> CFrame,
+    GetModel: (self) -> Model?,
+    WaitModel: (self) -> Model,
+    IsLocal: (self) -> boolean,
+
+    GetSpawnCFrame: (self) -> CFrame,
+    GetFish: (self, index: number) -> PlotTypes.Fish?,
+    GetAllFish: (self) -> {[string]: PlotTypes.Fish},
+
+    ModelCreated: (self, callback: (Model) -> ()) -> (),
+
+    RunHeartbeat: (self, dt: number) -> (),
+    RunRenderStepped: (self, dt: number) -> (),
+    IsDestroyed: (self) -> boolean,
+    Destroy: (self) -> boolean,
+
+    Fired: (self, type: string, handler: (self, ...any) -> (...any)) -> (),
+    Invoke: (self, name: string, ...any) -> (...any),
+    Fire: (self, type: string, ...any) -> (),
+
+    Save: (self, key: string) -> any,
+	SaveChanged: (self, key: string) -> Event.EventInstance,
+	Session: (self, key: string) -> any,
+	SessionChanged: (self, key: string) -> Event.EventInstance,
+	Local: (self, key: any) -> any,
+	LocalSet:(self, key: any, val: any) -> (),
+}
+
+export type Type = Fields<Type> & Functions<Type>
+
+local prototype = {}::(Functions<Type>)
+
+local GlobalById: {[number]: Type} = {}
+local GlobalByPlayer: {[Player]: Type} = {}
+
+local Created = Event.new()
+local Destroying = Event.new()
+
+function prototype:GetId(): number
+    return self.Id
+end
+
+function prototype:GetOwner(): Player?
+    return self.Owner
+end
+
+function prototype:GetCFrame(): CFrame
+    return self.CFrame
+end
+
+function prototype:GetModel(): Model?
+    return self.Model
+end
+
+function prototype:WaitModel(): Model
+    while not self.Model do
+        if self:IsDestroyed() then
+            error("Plot destroyed while waiting for model")
+        end
+        task.wait()
+    end
+    assert(self.Model, "Model not found")
+    return self.Model
+end
+
+function prototype:ModelCreated(callback: (Model) -> ())
+    self.ModelAdded:Connect(callback)
+    local model = self.Model
+    if model then
+        callback(model)
+    end
+end
+
+function prototype:GetSpawnCFrame(): CFrame
+    local model = self:WaitModel()
+    local spawnPart = model:FindFirstChild("Spawn")::BasePart
+    return spawnPart:GetPivot()
+end
+
+function prototype:IsLocal(): boolean
+    return self.Owner == Players.LocalPlayer
+end
+
+function prototype:IsDestroyed()
+    return self.Destroyed
+end
+
+function prototype:Destroy(): boolean
+    if self.Destroyed then
+        return false
+    end
+    self.Destroyed = true
+
+    if GlobalById[self.Id] == self then
+        GlobalById[self.Id] = nil
+    end
+    if GlobalByPlayer[self.Owner] == self then
+        GlobalByPlayer[self.Owner] = nil
+    end
+
+    self.Model = nil
+
+    self.Destroying:FireAsync()
+    Destroying:FireAsync(self)
+    return true
+end
+
+function prototype:Fired(type: string, handler: (...any) -> (...any))
+    if self.NetworkHandlers[type] then
+        error(`Handler for type '{type}' already exists`)
+    end
+    
+    self.NetworkHandlers[type] = handler
+end
+
+function prototype:Invoke(name: string, ...)
+    return Network.Invoke("Plots_Invoke", self.Id, type, ...)
+end
+
+function prototype:Fire(type: string, ...)
+    Network.Fire("Plots_Fire", self.Id, type, ...)
+end
+
+function prototype:RunHeartbeat(dt: number)
+    self.Heartbeat:FireAsync(dt)
+end
+
+function prototype:RunRenderStepped(dt: number)
+    self.RenderStepped:FireAsync(dt)
+end
+
+function prototype:GetFish(index: number): PlotTypes.Fish?
+    local fishes = self:GetAllFish()
+    return fishes[tostring(index)]
+end
+
+function prototype:GetAllFish(): {[string]: PlotTypes.Fish}
+    local fishes = self:Save("Fish")
+    if not fishes then
+        return {}
+    end
+    return fishes
+end
+
+function prototype:Save(key: string)
+    return self.SaveVariables[key]
+end
+
+function prototype:SaveChanged(key: string): Event.EventInstance
+	local result = self.SaveVariableChanged[key]
+	if not result then
+		result = Event.new()
+		self.SaveVariableChanged[key] = result
+	end
+	return result::any
+end
+
+function prototype:Session(key: string)
+    return self.SessionVariables[key]
+end
+
+function prototype:SessionChanged(key: string): Event.EventInstance
+	local result = self.SessionVariableChanged[key]
+	if not result then
+		result = Event.new()
+		self.SessionVariableChanged[key] = result
+	end
+	return result::any
+end
+
+function prototype:Local(key: any)
+    return self.LocalVariables[key]
+end
+
+function prototype:LocalSet(key: any, val: any)
+    self.LocalVariables[key] = val
+end
+
+local Metatable = table.freeze({ __index = table.freeze(prototype) })
+
+local module = {}
+
+local function applySaveUpdates(self: Type, updates: {{any}})
+    if not updates then return end
+    for _, pair in ipairs(updates) do
+        local key = pair[1]
+        local val = pair[2]
+        local oldVal = self.SaveVariables[key]
+        self.SaveVariables[key] = val
+
+        local event = self.SaveVariableChanged[key]
+        if event then
+            event:FireAsync(val, oldVal)
+        end
+    end
+end
+
+local function applySessionUpdates(self: Type, updates: {{any}})
+    if not updates then return end
+    for _, pair in ipairs(updates) do
+        local key = pair[1]
+        local val = pair[2]
+        local oldVal = self.SessionVariables[key]
+        self.SessionVariables[key] = val
+
+        local event = self.SessionVariableChanged[key]
+        if event then
+            event:FireAsync(val, oldVal)
+        end
+    end
+end
+
+local function handlePacket(self: Type, packet: PlotTypes.Packet)
+    local ptype = packet.PacketType
+    if ptype == "Join" then
+        local data = packet.Data
+        self.Owner = data.Owner
+        self.CFrame = data.CFrame
+        self.Model = data.Model
+        self.SaveVariables = data.SaveVariables or {}
+        self.SessionVariables = data.SessionVariables or {}
+    elseif ptype == "Leave" then
+        -- Optional cleanup or visibility changes
+    elseif ptype == "Update" then
+        local payload = packet.Data or {}
+        applySaveUpdates(self, payload.Save)
+        applySessionUpdates(self, payload.Session)
+    else
+        local handler = self.NetworkHandlers[ptype]
+        if handler then
+            task.spawn(function()
+                handler(self, packet.Data)
+            end)
+        end
+    end
+end
+
+function HandlePackets(packets: {PlotTypes.Packet})
+    for _, packet in ipairs(packets) do
+        local inst = GlobalById[packet.PlotId]
+        if inst and not inst:IsDestroyed() then
+            handlePacket(inst, packet)
+        end
+    end
+end
+
+Network.Fired("Plots", function(packets: {PlotTypes.Packet})
+    HandlePackets(packets)
+end)
+
+function module.GetById(id: number): Type
+    return GlobalById[id]
+end
+
+function module.GetAll(): {Type}
+    local list = {}
+    for _, inst in pairs(GlobalById) do
+        table.insert(list, inst)
+    end
+    return list
+end
+
+function module.NewFromServer(packet: PlotTypes.Packet)
+    local id = packet.PlotId
+    local self: Type = setmetatable({
+        Id = id,
+        Owner = packet.Data and packet.Data.Owner or nil,
+        CFrame = packet.Data and packet.Data.CFrame or CFrame.new(),
+        Model = packet.Data and packet.Data.Model or nil,
+        Destroyed = false,
+        Created = os.clock(),
+
+        SaveVariables = {},
+        SaveVariableChanged = {},
+        SessionVariables = {},
+        SessionVariableChanged = {},
+
+        Destroying = Event.new(),
+        Heartbeat = Event.new(),
+    }::any, Metatable)
+    GlobalById[id] = self
+    GlobalByPlayer[self.Owner] = self
+    handlePacket(self, packet)
+    Created:FireAsync(self)
+    return self
+end
+
+RunService:BindToRenderStep("Plots", Enum.RenderPriority.Last.Value, function(dt)
+    for id, inst in pairs(GlobalById) do
+        if not inst:IsDestroyed() then
+            Functions.wcall(inst.RunRenderStepped, inst, dt)
+        end
+    end
+end)
+
+RunService.Heartbeat:Connect(function(dt)
+    for id, inst in pairs(GlobalById) do
+        if not inst:IsDestroyed() then
+            Functions.wcall(inst.RunHeartbeat, inst, dt)
+        end
+    end
+end)
+
+Network.Fired("Join", function(packet: PlotTypes.Packet)
+    if GlobalById[packet.PlotId] then
+        return
+    end
+
+    module.NewFromServer(packet)
+end)
+
+return module
+
