@@ -62,8 +62,8 @@ type Functions<self> = {
 	GetAllFish: (self) -> {[string]: PlotTypes.Fish},
 
 	ClaimEarnings: (self, index: number) -> (boolean, number?),
-	SellFish: (self, index: number) -> (),
-	PickupFish: (self, index: number) -> (),
+	SellFish: (self, index: number) -> (boolean, number?),
+	PickupFish: (self, index: number) -> boolean,
 	GetMoney: (self) -> number,
 	AddMoney: (self, amount: number) -> (),
 
@@ -260,6 +260,8 @@ function prototype:GetAllFish(): {[string]: PlotTypes.Fish}
 end
 
 function prototype:ClaimEarnings(index: number): (boolean, number?)
+	Assert.IntegerPositive(index)
+
     local fish = self:GetFish(index)
     if not fish then
         return false
@@ -283,21 +285,25 @@ function prototype:ClaimEarnings(index: number): (boolean, number?)
 end
 
 function prototype:SellFish(index: number)
+	Assert.IntegerPositive(index)
+
 	local sellPrice = self:GetSellPrice(index)
 	if not sellPrice then
-		return
+		return false
 	end
     self:ClaimEarnings(index)
 	self:AddMoney(sellPrice)
     self:DeleteFish(index)
+	return true, sellPrice
 end
 
 function prototype:PickupFish(index: number)
     local fish = self:GetFish(index)
     if not fish then
-        return
+        return false
     end
     self:DeleteFish(index)
+	return true
 end
 
 function prototype:GetMoney(): number
@@ -305,7 +311,9 @@ function prototype:GetMoney(): number
 end
 
 function prototype:AddMoney(amount: number)
-    local money = (self:Save("Money") or 0) + amount
+	Assert.Number(amount)
+
+    local money = math.max(0, (self:Save("Money") or 0) + amount)
     self:SaveSet("Money", money)
 end
 
