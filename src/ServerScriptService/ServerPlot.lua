@@ -75,6 +75,7 @@ type Functions<self> = {
 	OwnerInvoked: (self, name: string, callback: (...any) -> ...any) -> (),
 	OtherInvoked: (self, name: string, callback: (Player, ...any) -> ...any) -> (),
 	Invoked: (self, name: string, callback: (Player, ...any) -> ...any) -> (),
+	Fire: (self, name: string, ...any) -> (),
 
 	Save: (self, key: string) -> any,
 	SaveSet: (self, key: string, val: any?) -> any?,
@@ -463,6 +464,14 @@ end
 
 function prototype:Invoked(name: string, callback: (Player, ...any) -> ...any)
 	self.InvokeHandlers[name] = callback
+end
+
+function prototype:Fire(name: string, data: any)
+	SendPacket(self.Owner, {
+		PacketType = name,
+		PlotId = self.Id,
+		Data = data
+	})
 end
 
 local Metatable = table.freeze({ __index = table.freeze(prototype) })

@@ -292,19 +292,6 @@ local function handlePacket(self: Type, packet: PlotTypes.Packet)
     end
 end
 
-function HandlePackets(packets: {PlotTypes.Packet})
-    for _, packet in ipairs(packets) do
-        local inst = GlobalById[packet.PlotId]
-        if inst and not inst:IsDestroyed() then
-            handlePacket(inst, packet)
-        end
-    end
-end
-
-Network.Fired("Plots", function(packets: {PlotTypes.Packet})
-    HandlePackets(packets)
-end)
-
 function module.GetById(id: number): Type
     return GlobalById[id]
 end
@@ -345,8 +332,31 @@ function module.NewFromServer(packet: PlotTypes.Packet)
     end
     handlePacket(self, packet)
     Created:FireAsync(self)
+
     return self
 end
+
+function HandlePackets(packets: {PlotTypes.Packet})
+    for _, packet in ipairs(packets) do
+        local inst = GlobalById[packet.PlotId]
+        if packet.PacketType == "Join" then
+            if inst or GlobalById[packet.PlotId] then
+                continue -- already handled
+            end
+
+            module.NewFromServer(packet)
+            continue
+        end
+
+        if inst and not inst:IsDestroyed() then
+            handlePacket(inst, packet)
+        end
+    end
+end
+
+Network.Fired("Plots", function(packets: {PlotTypes.Packet})
+    HandlePackets(packets)
+end)
 
 RunService:BindToRenderStep("Plots", Enum.RenderPriority.Last.Value, function(dt)
     for id, inst in pairs(GlobalById) do
@@ -362,14 +372,6 @@ RunService.Heartbeat:Connect(function(dt)
             Functions.wcall(inst.RunHeartbeat, inst, dt)
         end
     end
-end)
-
-Network.Fired("Join", function(packet: PlotTypes.Packet)
-    if GlobalById[packet.PlotId] then
-        return
-    end
-
-    module.NewFromServer(packet)
 end)
 
 return module
