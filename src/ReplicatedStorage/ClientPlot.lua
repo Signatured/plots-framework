@@ -34,7 +34,7 @@ type Fields<self> = {
 
 type Functions<self> = {
     GetId: (self) -> number,
-    GetOwner: (self) -> Player?,
+    GetOwner: (self) -> Player,
     GetCFrame: (self) -> CFrame,
     GetModel: (self) -> Model?,
     WaitModel: (self) -> Model,
@@ -77,7 +77,7 @@ function prototype:GetId(): number
     return self.Id
 end
 
-function prototype:GetOwner(): Player?
+function prototype:GetOwner(): Player
     return self.Owner
 end
 
@@ -231,7 +231,10 @@ end
 
 local Metatable = table.freeze({ __index = table.freeze(prototype) })
 
-local module = {}
+local module = {
+    Created = Created,
+    Destroying = Destroying,
+}
 
 local function applySaveUpdates(self: Type, updates: {{any}})
     if not updates then return end

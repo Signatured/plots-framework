@@ -27,6 +27,10 @@ function SetupTemplates()
 		local loc = assert(locations:WaitForChild(tostring(i)))::BasePart
 		loc.Transparency = 1
 		loc.CanCollide = false 
+
+        local playerBillboard = model:WaitForChild("PlayerBillboard"):WaitForChild("BillboardGui")::BillboardGui
+        playerBillboard.Enabled = false
+
 		model:PivotTo(loc.CFrame)
 		model.Parent = templateFolder
 		templatePlots[i] = model
