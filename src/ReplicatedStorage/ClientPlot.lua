@@ -14,7 +14,7 @@ type Fields<self> = {
     Id: number,
     Owner: Player,
     CFrame: CFrame,
-    Model: Model?,
+    ModelName: string,
     Destroyed: boolean,
     Created: number,
 
@@ -86,23 +86,36 @@ function prototype:GetCFrame(): CFrame
 end
 
 function prototype:GetModel(): Model?
-    return self.Model
+    local thingsFolder = workspace:FindFirstChild("__THINGS")
+    if not thingsFolder then
+        return nil
+    end
+    local plotsFolder = thingsFolder:FindFirstChild("Plots")
+    if not plotsFolder then
+        return nil
+    end
+    local model = plotsFolder:FindFirstChild(self.ModelName)
+    if not model then
+        return nil
+    end
+    return model
 end
 
 function prototype:WaitModel(): Model
-    while not self.Model do
+    while not self:GetModel() do
         if self:IsDestroyed() then
             error("Plot destroyed while waiting for model")
         end
         task.wait()
     end
-    assert(self.Model, "Model not found")
-    return self.Model
+    local model = self:GetModel()
+    assert(model, "Model not found")
+    return model
 end
 
 function prototype:ModelCreated(callback: (Model) -> ())
     self.ModelAdded:Connect(callback)
-    local model = self.Model
+    local model = self:GetModel()
     if model then
         callback(model)
     end
@@ -135,7 +148,10 @@ function prototype:Destroy(): boolean
         GlobalByPlayer[self.Owner] = nil
     end
 
-    self.Model = nil
+    local model = self:GetModel()
+    if model then
+        model:Destroy()
+    end
 
     self.Destroying:FireAsync()
     Destroying:FireAsync(self)
@@ -151,7 +167,7 @@ function prototype:Fired(type: string, handler: (...any) -> (...any))
 end
 
 function prototype:Invoke(name: string, ...)
-    return Network.Invoke("Plots_Invoke", self.Id, type, ...)
+    return Network.Invoke("Plots_Invoke", self.Id, name, ...)
 end
 
 function prototype:Fire(type: string, ...)
@@ -251,11 +267,15 @@ local function handlePacket(self: Type, packet: PlotTypes.Packet)
     local ptype = packet.PacketType
     if ptype == "Join" then
         local data = packet.Data
+        local modelName = tostring(packet.PlotId)
         self.Owner = data.Owner
         self.CFrame = data.CFrame
-        self.Model = data.Model
+        self.ModelName = modelName
         self.SaveVariables = data.SaveVariables or {}
         self.SessionVariables = data.SessionVariables or {}
+        if self:GetModel() then
+            self.ModelAdded:FireAsync(self:GetModel())
+        end
     elseif ptype == "Leave" then
         -- Optional cleanup or visibility changes
     elseif ptype == "Update" then
@@ -307,16 +327,22 @@ function module.NewFromServer(packet: PlotTypes.Packet)
         Destroyed = false,
         Created = os.clock(),
 
+        NetworkHandlers = {},
         SaveVariables = {},
         SaveVariableChanged = {},
         SessionVariables = {},
         SessionVariableChanged = {},
+        LocalVariables = {},
 
+        ModelAdded = Event.new(),
         Destroying = Event.new(),
         Heartbeat = Event.new(),
+        RenderStepped = Event.new(),
     }::any, Metatable)
     GlobalById[id] = self
-    GlobalByPlayer[self.Owner] = self
+    if self.Owner then
+        GlobalByPlayer[self.Owner] = self
+    end
     handlePacket(self, packet)
     Created:FireAsync(self)
     return self
