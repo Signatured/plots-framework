@@ -130,13 +130,6 @@ function SetupPlayer(player: Player)
             PivotPlayer(player, teleportCFrame)
         end)
     end)
-
-    task.delay(4, function()
-        print("Firing")
-        plot:Fire("Test", {
-            Message = "Hello"
-        })
-    end)
 end
 
 function RemovePlayer(player: Player)
