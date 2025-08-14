@@ -43,8 +43,6 @@ function SetupTemplates()
 		model.Parent = templateFolder
 		templatePlots[i] = model
     end
-
-    print(templatePlots)
 end
 
 function UpdateTemplates()
@@ -173,7 +171,6 @@ function SetupPlayer(player: Player)
         end
 
         plot:SaveSet("Pedestals", pedestalCount + 1)
-        print(plot:Save("Pedestals"))
         return true
     end)
 
