@@ -3,13 +3,13 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local GameSettings = require(game.ServerScriptService.Game.GameServerLibrary.GameSettings)
+local GameSettings = require(game.ServerScriptService.Game.Library.GameSettings)
 local Saving = require(game.ServerScriptService.Library.Saving)
 local ServerPlot = require(game.ServerScriptService.Plot.ServerPlot)
 local Assert = require(game.ReplicatedStorage.Library.Assert)
 local PlotTypes = require(game.ReplicatedStorage.Game.Library.Types.Plots)
 local PivotPlayer = require(game.ReplicatedStorage.Library.Functions.PivotPlayer)
-local Fish = require(game.ServerScriptService.Game.GameServerLibrary.Fish)
+local Fish = require(game.ServerScriptService.Game.Library.Fish)
 
 local PLOT_COUNT = GameSettings.PlotCount
 local claimedPlots: {[number]: Player} = {}
