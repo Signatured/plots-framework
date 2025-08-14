@@ -45,6 +45,8 @@ type Functions<self> = {
     GetFish: (self, index: number) -> PlotTypes.Fish?,
     GetAllFish: (self) -> {[string]: PlotTypes.Fish},
     GetFishLevel: (self, index: number) -> number?,
+    GetFishEarnings: (self, index: number) -> number,
+    GetFishOfflineEarnings: (self, index: number) -> number,
     GetMoneyPerSecond: (self, index: number) -> number?,
     GetUpgradeCost: (self, index: number) -> number?,
     CanAfford: (self, cost: number) -> boolean,
@@ -206,6 +208,33 @@ function prototype:GetFishLevel(index: number): number?
         return nil
     end
     return fish.FishData.Level
+end
+
+function prototype:GetFishEarnings(index: number): number
+    local fish = self:GetFish(index)
+    if not fish then
+        return 0
+    end
+    local dir = Directory.Fish[fish.FishId]
+    if not dir then
+        return 0
+    end
+    local now = workspace:GetServerTimeNow()
+    local last = fish.LastClaimTime or now
+    local dt = math.max(0, now - last)
+    if dt < 1 then
+        return 0
+    end
+    local earned = math.ceil(dir.MoneyPerSecond * math.floor(dt))
+    return earned
+end
+
+function prototype:GetFishOfflineEarnings(index: number): number
+    local fish = self:GetFish(index)
+    if not fish then
+        return 0
+    end
+    return fish.OfflineEarnings
 end
 
 function prototype:GetMoneyPerSecond(index: number): number?
