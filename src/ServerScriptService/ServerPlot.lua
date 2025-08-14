@@ -63,6 +63,7 @@ type Functions<self> = {
 
 	ClaimEarnings: (self, index: number) -> (boolean, number?),
 	SellFish: (self, index: number) -> (boolean, number?),
+	UpgradeFish: (self, index: number) -> boolean,
 	PickupFish: (self, index: number) -> boolean,
 	GetMoney: (self) -> number,
 	AddMoney: (self, amount: number) -> boolean,
@@ -271,9 +272,6 @@ end
 
 function prototype:SetFish(fish: PlotTypes.Fish, index: number): PlotTypes.Fish?
     local fishes = self:GetAllFish()
-	if fishes[tostring(index)] then
-		return nil
-	end
 	fishes[tostring(index)] = fish
 	self.FishAdded:FireAsync(fish)
 	fishes[tostring(index)] = fish
@@ -378,6 +376,44 @@ function prototype:SellFish(index: number)
 	self:AddMoney(sellPrice)
     self:DeleteFish(index)
 	return true, sellPrice
+end
+
+function prototype:UpgradeFish(index: number)
+	Assert.IntegerPositive(index)
+
+	print("fired1")
+
+	local fish = self:GetFish(index)
+	if not fish then
+		return false
+	end
+
+	print("fired2")
+
+	local dir = Directory.Fish[fish.FishId]
+	if not dir then
+		return false
+	end
+
+	print("fired3")
+
+	local cost = self:GetUpgradeCost(index)
+	if not cost then
+		return false
+	end	
+
+	print("fired4")
+
+	if not self:CanAfford(cost) then
+		return false
+	end
+
+	print("fired5")
+
+	fish.FishData.Level = fish.FishData.Level + 1
+	self:SetFish(fish, index)
+	self:AddMoney(-cost)
+	return true
 end
 
 function prototype:PickupFish(index: number)

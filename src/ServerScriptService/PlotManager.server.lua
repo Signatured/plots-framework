@@ -9,6 +9,7 @@ local ServerPlot = require(game.ServerScriptService.Plot.ServerPlot)
 local Assert = require(game.ReplicatedStorage.Library.Assert)
 local PlotTypes = require(game.ReplicatedStorage.Game.GameLibrary.Types.Plots)
 local PivotPlayer = require(game.ReplicatedStorage.Library.Functions.PivotPlayer)
+local Fish = require(game.ServerScriptService.Game.GameServerLibrary.Fish)
 
 local PLOT_COUNT = GameSettings.PlotCount
 local claimedPlots: {[number]: Player} = {}
@@ -111,6 +112,30 @@ function SetupPlayer(player: Player)
 
         local success, amount = plot:ClaimEarnings(index)
         return success, amount
+    end)
+
+    plot:OwnerInvoked("CreateFish", function(index: number, uid: string)
+        Assert.String(uid)
+
+        local fishData = Fish.GetFromInventory(player, uid)
+        if not fishData then
+            return false
+        end
+
+        local success = plot:CreateFish(fishData, index)
+
+        if success then
+            Fish.Take(player, uid)
+        end
+
+        return success ~= nil
+    end)
+
+    plot:OwnerInvoked("UpgradeFish", function(index: number)
+        Assert.IntegerPositive(index)
+        
+        local success = plot:UpgradeFish(index)
+        return success ~= nil
     end)
 
     plot:OwnerInvoked("SellFish", function(index: number)
