@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 local Event = require(ReplicatedStorage.Library.Modules.Event)
 local Network = require(ReplicatedStorage.Library.Client.Network)
 local Functions = require(ReplicatedStorage.Library.Functions)
+local Directory = require(ReplicatedStorage.Game.GameLibrary.Directory)
 
 local PlotTypes = require(ReplicatedStorage.Game.GameLibrary.Types.Plots)
 
@@ -43,6 +44,10 @@ type Functions<self> = {
     GetSpawnCFrame: (self) -> CFrame,
     GetFish: (self, index: number) -> PlotTypes.Fish?,
     GetAllFish: (self) -> {[string]: PlotTypes.Fish},
+    GetFishLevel: (self, index: number) -> number?,
+    GetMoneyPerSecond: (self, index: number) -> number?,
+    GetUpgradeCost: (self, index: number) -> number?,
+    CanAfford: (self, cost: number) -> boolean,
 
     ModelCreated: (self, callback: (Model) -> ()) -> (),
 
@@ -193,6 +198,44 @@ function prototype:GetAllFish(): {[string]: PlotTypes.Fish}
         return {}
     end
     return fishes
+end
+
+function prototype:GetFishLevel(index: number): number?
+    local fish = self:GetFish(index)
+    if not fish then
+        return nil
+    end
+    return fish.FishData.Level
+end
+
+function prototype:GetMoneyPerSecond(index: number): number?
+	local fish = self:GetFish(index)
+	if not fish then
+		return nil
+	end
+    local dir = Directory.Fish[fish.FishId]
+    return dir.MoneyPerSecond * fish.FishData.Level
+end
+
+function prototype:GetUpgradeCost(index: number): number?
+	local fish = self:GetFish(index)
+	if not fish then
+		return nil
+	end
+    local fishLevel = self:GetFishLevel(index)
+	if not fishLevel then
+		return nil
+	end
+    local dir = Directory.Fish[fish.FishId]
+    return math.pow(dir.BaseUpgradeCost, fishLevel)
+end
+
+function prototype:CanAfford(cost: number): boolean
+    local money = self:Save("Money")
+    if not money then
+        return false
+    end
+    return money >= cost
 end
 
 function prototype:Save(key: string)
