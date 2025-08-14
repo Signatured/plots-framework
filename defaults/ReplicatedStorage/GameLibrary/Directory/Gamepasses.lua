@@ -1,6 +1,6 @@
 --!strict
 
-local GamepassTypes = require(game.ReplicatedStorage.Game.GameLibrary.Types.Gamepasses)
+local GamepassTypes = require(game.ReplicatedStorage.Game.Library.Types.Gamepasses)
 export type dir_schema = GamepassTypes.dir_schema
 
 local Children: typeof(workspace.__DIRECTORY.Gamepasses) = require(game.ReplicatedStorage.DirectoryLoader):WaitForChild(script.Name)

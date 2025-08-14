@@ -1,6 +1,6 @@
 --!strict
 
-local ProductTypes = require(game.ReplicatedStorage.Game.GameLibrary.Types.Products)
+local ProductTypes = require(game.ReplicatedStorage.Game.Library.Types.Products)
 export type dir_schema = ProductTypes.dir_schema
 
 local Children: typeof(workspace.__DIRECTORY.Products) = require(game.ReplicatedStorage.DirectoryLoader):WaitForChild(script.Name)

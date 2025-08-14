@@ -7,7 +7,7 @@ local GameSettings = require(game.ServerScriptService.Game.GameServerLibrary.Gam
 local Saving = require(game.ServerScriptService.Library.Saving)
 local ServerPlot = require(game.ServerScriptService.Plot.ServerPlot)
 local Assert = require(game.ReplicatedStorage.Library.Assert)
-local PlotTypes = require(game.ReplicatedStorage.Game.GameLibrary.Types.Plots)
+local PlotTypes = require(game.ReplicatedStorage.Game.Library.Types.Plots)
 local PivotPlayer = require(game.ReplicatedStorage.Library.Functions.PivotPlayer)
 local Fish = require(game.ServerScriptService.Game.GameServerLibrary.Fish)
 

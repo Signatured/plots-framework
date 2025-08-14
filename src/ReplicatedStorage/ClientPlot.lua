@@ -7,9 +7,9 @@ local Players = game:GetService("Players")
 local Event = require(ReplicatedStorage.Library.Modules.Event)
 local Network = require(ReplicatedStorage.Library.Client.Network)
 local Functions = require(ReplicatedStorage.Library.Functions)
-local Directory = require(ReplicatedStorage.Game.GameLibrary.Directory)
+local Directory = require(ReplicatedStorage.Game.Library.Directory)
 
-local PlotTypes = require(ReplicatedStorage.Game.GameLibrary.Types.Plots)
+local PlotTypes = require(ReplicatedStorage.Game.Library.Types.Plots)
 
 type Fields<self> = {
     Id: number,
