@@ -174,6 +174,16 @@ function SetupPlayer(player: Player)
         return true
     end)
 
+    plot:OwnerInvoked("DeleteFish", function(uid: string)
+        local fish = Fish.GetFromInventory(player, uid)
+        if not fish then
+            return false
+        end
+
+        Fish.Take(player, uid)
+        return true
+    end)
+
     local spawnPart = plot:GetModel():WaitForChild("Spawn")::BasePart
     local teleportCFrame = spawnPart:GetPivot() + Vector3.new(0, 3, 0) 
 	task.delay(0.25, function()

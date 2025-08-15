@@ -379,6 +379,10 @@ function module.GetAll(): {Type}
     return list
 end
 
+function module.GetLocal(): Type?
+    return GlobalByPlayer[Players.LocalPlayer]
+end
+
 function module.NewFromServer(packet: PlotTypes.Packet)
     local id = packet.PlotId
     local self: Type = setmetatable({
