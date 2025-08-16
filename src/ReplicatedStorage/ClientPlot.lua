@@ -375,6 +375,30 @@ function module.GetLocal(): Type?
     return GlobalByPlayer[Players.LocalPlayer]
 end
 
+function module.GetOrWaitLocal(callback: ((Type) -> ())?): Type?
+    local localPlot = module.GetLocal()
+    if localPlot then
+        if callback then
+            task.spawn(callback, localPlot)
+        end
+        return localPlot
+    end
+
+    if callback then
+        local conn
+        conn = Created:Connect(function(inst: Type)
+            if inst and inst:IsLocal() then
+                if conn then
+                    conn:Disconnect()
+                end
+                task.spawn(callback, inst)
+            end
+        end)
+    end
+
+    return nil
+end
+
 function module.NewFromServer(packet: PlotTypes.Packet)
     local id = packet.PlotId
     local self: Type = setmetatable({
