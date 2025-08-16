@@ -189,6 +189,33 @@ end
 function prototype:RunHeartbeat(dt: number)
 	self.Heartbeat:FireAsync(dt)
 
+	-- Accumulate online earnings each whole second using current multiplier
+	local accum = self:Local("EarningsAccumulatorTime") or 0
+	accum += dt
+	local wholeSeconds = 0
+	while accum >= 1 do
+		wholeSeconds += 1
+		accum -= 1
+	end
+	self:LocalSet("EarningsAccumulatorTime", accum)
+	if wholeSeconds > 0 then
+		local fishes = self:GetAllFish()
+		local multiplier = self:GetMultiplier()
+		local changed = false
+		for indexStr, fish in pairs(fishes) do
+			local index = tonumber(indexStr)
+			if index then
+				local basePerSecond = self:GetMoneyPerSecond(index) or 0
+				local addAmount = basePerSecond * multiplier * wholeSeconds
+				fish.Earnings = (fish.Earnings or 0) + addAmount
+				changed = true
+			end
+		end
+		if changed then
+			self:SaveSet("Fish", fishes)
+		end
+	end
+
 	local saveUpdates = ComputeUpdate(self.SaveVariables, self.SaveVariableUpdates)
 	local sessionUpdates = ComputeUpdate(self.SessionVariables, self.SessionVariableUpdates)
 	if next(saveUpdates) or next(sessionUpdates) then
@@ -265,6 +292,7 @@ function prototype:CreateFish(fishData: FishTypes.data_schema, index: number): P
 		FishId = fishData.FishId,
 		LastClaimTime = now,
 		CreateTime = now,
+		Earnings = 0,
 		OfflineEarnings = 0,
 	}
 	self:SetFish(fish, index)
@@ -344,26 +372,21 @@ end
 function prototype:ClaimEarnings(index: number): (boolean, number?)
 	Assert.IntegerPositive(index)
 
-    local fish = self:GetFish(index)
-    if not fish then
-        return false
-    end
-    local dir = Directory.Fish[fish.FishId]
-    if not dir then
-        return false
-    end
-    local now = workspace:GetServerTimeNow()
-    local last = fish.LastClaimTime or now
-    local dt = math.max(0, now - last)
-    if dt < 1 then
-        return false
-    end
-    local earned = math.ceil(dir.MoneyPerSecond * dt)
-    fish.LastClaimTime = now
+	local fish = self:GetFish(index)
+	if not fish then
+		return false
+	end
+	local total = (fish.Earnings or 0) + (fish.OfflineEarnings or 0)
+	local payout = math.floor(total)
+	if payout <= 0 then
+		return false
+	end
+	fish.Earnings = math.max(0, total - payout)
 	fish.OfflineEarnings = 0
-    self:SetFish(fish, index)
-    self:AddMoney(earned)
-	return true, earned
+	fish.LastClaimTime = workspace:GetServerTimeNow()
+	self:SetFish(fish, index)
+	self:AddMoney(payout)
+	return true, payout
 end
 
 function prototype:SellFish(index: number)
@@ -572,6 +595,30 @@ function module.new(owner: Player, blueprint: Model, cFrame: CFrame): Type
 	GlobalById[id] = self
 	GlobalByPlayer[owner] = self
 	
+	-- Compute offline earnings based on LastLogout (if available)
+	local lastLogout = save.LastLogout
+	if lastLogout then
+		print("Computing offline earnings", lastLogout)
+		local nowTime = workspace:GetServerTimeNow()
+		local offlineSeconds = math.max(0, nowTime - lastLogout)
+		if offlineSeconds > 0 then
+			local fishes = self:GetAllFish()
+			local changed = false
+			for _, fish in pairs(fishes) do
+				local dir = Directory.Fish[fish.FishId]
+				if dir then
+					local basePerSecond = dir.MoneyPerSecond * (fish.FishData.Level or 1)
+					fish.OfflineEarnings = math.max(0, (fish.OfflineEarnings or 0) + math.floor(basePerSecond * offlineSeconds))
+					changed = true
+				end
+			end
+			if changed then
+				self:SaveSet("Fish", fishes)
+			end
+		end
+		save.LastLogout = nil
+	end
+	
 	Created:FireAsync(self)
 
 	for _, player in ipairs(game.Players:GetPlayers()) do 
@@ -697,6 +744,10 @@ Network.Invoked("Plots_Invoke", function(player, id: number, name: string, ...: 
 		end
 		return handler(player, ...)
 	end
+end)
+
+Saving.SaveRemoving:Connect(function(player, save)
+	save.LastLogout = workspace:GetServerTimeNow()
 end)
 
 module.Prototype = prototype

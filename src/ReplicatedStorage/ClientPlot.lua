@@ -215,18 +215,9 @@ function prototype:GetFishEarnings(index: number): number
     if not fish then
         return 0
     end
-    local dir = Directory.Fish[fish.FishId]
-    if not dir then
-        return 0
-    end
-    local now = workspace:GetServerTimeNow()
-    local last = fish.LastClaimTime or now
-    local dt = math.max(0, now - last)
-    if dt < 1 then
-        return 0
-    end
-    local earned = math.ceil(dir.MoneyPerSecond * math.floor(dt))
-    return earned
+    -- Earnings are now accumulated on the server and replicated via Save updates
+    local earnings = fish.Earnings or 0
+    return math.floor(earnings)
 end
 
 function prototype:GetFishOfflineEarnings(index: number): number
@@ -234,7 +225,7 @@ function prototype:GetFishOfflineEarnings(index: number): number
     if not fish then
         return 0
     end
-    return fish.OfflineEarnings
+    return math.floor(fish.OfflineEarnings or 0)
 end
 
 function prototype:GetMoneyPerSecond(index: number): number?
