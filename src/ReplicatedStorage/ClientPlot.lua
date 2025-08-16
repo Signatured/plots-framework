@@ -323,6 +323,7 @@ local function applySessionUpdates(self: Type, updates: {{any}})
         self.SessionVariables[key] = val
 
         local event = self.SessionVariableChanged[key]
+        print("event", self.SessionVariableChanged, event)
         if event then
             event:FireAsync(val, oldVal)
         end

@@ -598,7 +598,6 @@ function module.new(owner: Player, blueprint: Model, cFrame: CFrame): Type
 	-- Compute offline earnings based on LastLogout (if available)
 	local lastLogout = save.LastLogout
 	if lastLogout then
-		print("Computing offline earnings", lastLogout)
 		local nowTime = workspace:GetServerTimeNow()
 		local offlineSeconds = math.max(0, nowTime - lastLogout)
 		if offlineSeconds > 0 then
