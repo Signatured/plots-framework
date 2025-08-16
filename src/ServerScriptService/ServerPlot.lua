@@ -68,6 +68,7 @@ type Functions<self> = {
 	GetMoney: (self) -> number,
 	AddMoney: (self, amount: number) -> boolean,
 	CanAfford: (self, amount: number) -> boolean,
+	GetMultiplier: (self) -> number,
 
 	Join: (self, player: Player) -> boolean,
 	Unjoin: (self, player: Player) -> boolean,
@@ -432,6 +433,16 @@ function prototype:CanAfford(amount: number): boolean
 	return self:GetMoney() >= amount
 end
 
+function prototype:GetMultiplier(): number
+    local multiplier = 1
+	local friendBoost = self:Session("FriendBoost") or 0
+	local paidIndex = self:Session("PaidIndex") or 0
+	local paidMultiplier = 0.5 * paidIndex
+
+	multiplier = multiplier + (Functions.Round(friendBoost / 100, 1) + paidMultiplier)
+	return multiplier
+end
+
 function prototype:Join(player: Player): boolean
 	if self:IsDestroyed() then
 		return false
@@ -509,6 +520,10 @@ local Metatable = table.freeze({ __index = table.freeze(prototype) })
 
 local module = {}
 
+local defaultSessionVariables = {
+	FriendBoost = 0,
+}
+
 function module.new(owner: Player, blueprint: Model, cFrame: CFrame): Type
 	local save = Saving.Get(owner)
 	assert(save, "NoSave")
@@ -540,7 +555,7 @@ function module.new(owner: Player, blueprint: Model, cFrame: CFrame): Type
 		SaveVariables = plotSave.Variables,
 		SaveVariableUpdates = {},
 		SaveVariableChanged = {},
-		SessionVariables = {},
+		SessionVariables = defaultSessionVariables,
 		SessionVariableUpdates = {},
 		SessionVariableChanged = {},
 		LocalVariables = {},
