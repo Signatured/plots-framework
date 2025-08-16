@@ -201,12 +201,18 @@ function prototype:RunHeartbeat(dt: number)
 	if wholeSeconds > 0 then
 		local fishes = self:GetAllFish()
 		local multiplier = self:GetMultiplier()
+		local boosts = self:Session("PlayerBoosts")::{[string]: number}
 		local changed = false
 		for indexStr, fish in pairs(fishes) do
 			local index = tonumber(indexStr)
 			if index then
+				local boostedTime = boosts[tostring(index)]
+				local isBoosted = boostedTime and workspace:GetServerTimeNow() < boostedTime
 				local basePerSecond = self:GetMoneyPerSecond(index) or 0
-				local addAmount = basePerSecond * multiplier * wholeSeconds
+
+				local fishMultiplier = multiplier + (isBoosted and 0.5 or 0)
+				local addAmount = math.ceil(basePerSecond * fishMultiplier * wholeSeconds)
+
 				fish.Earnings = (fish.Earnings or 0) + addAmount
 				changed = true
 			end
@@ -545,6 +551,7 @@ local module = {}
 
 local defaultSessionVariables = {
 	FriendBoost = 0,
+	PlayerBoosts = {},
 }
 
 function module.new(owner: Player, blueprint: Model, cFrame: CFrame): Type

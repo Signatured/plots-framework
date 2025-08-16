@@ -184,6 +184,28 @@ function SetupPlayer(player: Player)
         return true
     end)
 
+    local boostTime = 60 * 5
+    plot:OtherInvoked("PlayerBoost", function(player: Player, index: number)
+        Assert.IntegerPositive(index)
+        
+        if player == plot:GetOwner() then
+            return false
+        end
+
+        if index > plot:Save("Pedestals")::number then
+            return false
+        end
+
+        if not plot:GetFish(index) then
+            return false, "They need to place a fish first!"
+        end
+
+        local boosts = plot:Session("PlayerBoosts")::{[string]: number}
+        boosts[tostring(index)] = workspace:GetServerTimeNow() + boostTime
+        plot:SessionSet("PlayerBoosts", boosts)
+        return true
+    end)
+
     local spawnPart = plot:GetModel():WaitForChild("Spawn")::BasePart
     local teleportCFrame = spawnPart:GetPivot() + Vector3.new(0, 3, 0) 
 	task.delay(0.25, function()

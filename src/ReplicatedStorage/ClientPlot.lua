@@ -375,7 +375,7 @@ function module.GetLocal(): Type?
     return GlobalByPlayer[Players.LocalPlayer]
 end
 
-function module.GetOrWaitLocal(callback: ((Type) -> ())?): Type?
+function module.OnLocalAndCreated(callback: ((Type) -> ())?): Type?
     local localPlot = module.GetLocal()
     if localPlot then
         if callback then
@@ -397,6 +397,16 @@ function module.GetOrWaitLocal(callback: ((Type) -> ())?): Type?
     end
 
     return nil
+end
+
+function module.OnAllAndCreated(callback: ((Type) -> ()))
+    for _, plot in module.GetAll() do
+        task.spawn(callback, plot)
+    end
+
+    Created:Connect(function(plot: Type)
+        task.spawn(callback, plot)
+    end)
 end
 
 function module.NewFromServer(packet: PlotTypes.Packet)
