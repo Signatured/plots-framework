@@ -42,6 +42,7 @@ type Functions<self> = {
     IsLocal: (self) -> boolean,
 
     GetSpawnCFrame: (self) -> CFrame,
+    WaitSpawnCFrame: (self) -> CFrame,
     GetFish: (self, index: number) -> PlotTypes.Fish?,
     GetAllFish: (self) -> {[string]: PlotTypes.Fish},
     GetFishLevel: (self, index: number) -> number?,
@@ -132,6 +133,18 @@ function prototype:GetSpawnCFrame(): CFrame
     local model = self:WaitModel()
     local spawnPart = model:FindFirstChild("Spawn")::BasePart
     return spawnPart:GetPivot()
+end
+
+function prototype:WaitSpawnCFrame(): CFrame
+    while not self:GetSpawnCFrame() do
+        if self:IsDestroyed() then
+            error("Plot destroyed while waiting for CFrame")
+        end
+        task.wait()
+    end
+    local spawnCFrame = self:GetSpawnCFrame()
+    assert(spawnCFrame, "CFrame not found")
+    return spawnCFrame
 end
 
 function prototype:IsLocal(): boolean
