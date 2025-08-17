@@ -208,11 +208,11 @@ function SetupPlayer(player: Player)
 
     local spawnPart = plot:GetModel():WaitForChild("Spawn")::BasePart
     local teleportCFrame = spawnPart:GetPivot() + Vector3.new(0, 3, 0) 
-	task.delay(0.25, function()
+	task.delay(0.1, function()
 		PivotPlayer(player, teleportCFrame)
 	end)
     player.CharacterAdded:Connect(function(character: Model)
-        task.delay(0.25, function()
+        task.delay(0.1, function()
             PivotPlayer(player, teleportCFrame)
         end)
     end)
