@@ -13,6 +13,7 @@ local Saving = require(ServerScriptService.Library.Saving)
 local Network = require(ServerScriptService.Library.Network)
 local Functions = require(ReplicatedStorage.Library.Functions)
 local Assert = require(ReplicatedStorage.Library.Assert)
+local Fish = require(ServerScriptService.Game.Library.Fish)
 
 type Fields<self> = {
 	Id: number,
@@ -442,6 +443,10 @@ function prototype:PickupFish(index: number)
         return false
     end
     self:DeleteFish(index)
+	local data = Fish.Give(self.Owner, fish.FishData)
+	if data then
+		Fish.ForceHoldFish(self.Owner, data)
+	end
 	return true
 end
 
