@@ -14,6 +14,8 @@ local Network = require(ServerScriptService.Library.Network)
 local Functions = require(ReplicatedStorage.Library.Functions)
 local Assert = require(ReplicatedStorage.Library.Assert)
 local Fish = require(ServerScriptService.Game.Library.Fish)
+local BadgeManager = require(ServerScriptService.Game.Library.BadgeManager)
+local SharedGameSettings = require(ReplicatedStorage.Game.Library.GameSettings)
 
 type Fields<self> = {
 	Id: number,
@@ -70,6 +72,7 @@ type Functions<self> = {
 	AddMoney: (self, amount: number) -> boolean,
 	CanAfford: (self, amount: number) -> boolean,
 	GetMultiplier: (self) -> number,
+	AddPedestal: (self) -> boolean,
 
 	Join: (self, player: Player) -> boolean,
 	Unjoin: (self, player: Player) -> boolean,
@@ -459,6 +462,11 @@ function prototype:AddMoney(amount: number)
 
     local money = math.max(0, (self:Save("Money") or 0) + amount)
     self:SaveSet("Money", money)
+
+	task.spawn(function()
+		BadgeManager.GiveMoneyBadge(self.Owner, money)
+	end)
+
 	return true
 end
 
@@ -475,6 +483,19 @@ function prototype:GetMultiplier(): number
 
 	multiplier = multiplier + (Functions.Round(friendBoost / 100, 1) + paidMultiplier)
 	return multiplier
+end
+
+function prototype:AddPedestal(): boolean
+	local pedestals = self:Save("Pedestals")::number
+	if pedestals >= SharedGameSettings.PedestalCount then
+		return false
+	end
+	self:SaveSet("Pedestals", pedestals + 1)
+	task.spawn(function()
+		BadgeManager.GiveBadgeByName(self.Owner, "NewStand")
+	end)
+	self.PedestalAdded:FireAsync(pedestals + 1)
+	return true
 end
 
 function prototype:Join(player: Player): boolean

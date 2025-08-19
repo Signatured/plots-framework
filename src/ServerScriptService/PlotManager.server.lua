@@ -210,8 +210,8 @@ function SetupPlayer(player: Player)
             return false
         end
 
-        plot:SaveSet("Pedestals", pedestalCount + 1)
-        return true
+        local addSuccess = plot:AddPedestal()
+        return addSuccess
     end)
 
     plot:OwnerInvoked("DeleteFish", function(uid: string)
