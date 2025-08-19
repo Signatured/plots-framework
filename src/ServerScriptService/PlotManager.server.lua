@@ -3,6 +3,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Player = require(game.ReplicatedStorage.Library.Player)
 local GameSettings = require(game.ServerScriptService.Game.Library.GameSettings)
 local SharedGameSettings = require(game.ReplicatedStorage.Game.Library.GameSettings)
 local Saving = require(game.ServerScriptService.Library.Saving)
@@ -11,6 +12,7 @@ local Assert = require(game.ReplicatedStorage.Library.Assert)
 local PlotTypes = require(game.ReplicatedStorage.Game.Library.Types.Plots)
 local PivotPlayer = require(game.ReplicatedStorage.Library.Functions.PivotPlayer)
 local Fish = require(game.ServerScriptService.Game.Library.Fish)
+local Functions = require(game.ReplicatedStorage.Library.Functions)
 
 local PLOT_COUNT = GameSettings.PlotCount
 local PEDESTAL_COUNT = SharedGameSettings.PedestalCount
@@ -86,6 +88,13 @@ function ClaimPlot(player: Player): CFrame?
     return loc.CFrame
 end
 
+function IsPlayerSafe(player: Player): boolean
+    local safeZone = workspace:WaitForChild("__THINGS"):WaitForChild("HomeBase")::Part
+    local position = Player.Optional.Position(player)
+
+    return position ~= nil and Functions.IsPositionInPart(position, safeZone)
+end
+
 function SetupPlayer(player: Player)
     local cframe = nil
     while player.Parent do
@@ -111,12 +120,20 @@ function SetupPlayer(player: Player)
     plot:OwnerInvoked("ClaimEarnings", function(index: number)
         Assert.IntegerPositive(index)
 
+        if not IsPlayerSafe(player) then
+            return false, "You are not in a safe zone!"
+        end
+
         local success, amount = plot:ClaimEarnings(index)
         return success, amount
     end)
 
     plot:OwnerInvoked("CreateFish", function(index: number, uid: string)
         Assert.String(uid)
+
+        if not IsPlayerSafe(player) then
+            return false, "You are not in a safe zone!"
+        end
 
         local fishData = Fish.GetFromInventory(player, uid)
         if not fishData then
@@ -134,6 +151,10 @@ function SetupPlayer(player: Player)
 
     plot:OwnerInvoked("UpgradeFish", function(index: number)
         Assert.IntegerPositive(index)
+
+        if not IsPlayerSafe(player) then
+            return false, "You are not in a safe zone!"
+        end
         
         local success = plot:UpgradeFish(index)
         return success ~= nil
@@ -142,6 +163,10 @@ function SetupPlayer(player: Player)
     plot:OwnerInvoked("SellFish", function(index: number)
         Assert.IntegerPositive(index)
 
+        if not IsPlayerSafe(player) then
+            return false, "You are not in a safe zone!"
+        end
+
         local success, amount = plot:SellFish(index)
         return success, amount
     end)
@@ -149,12 +174,20 @@ function SetupPlayer(player: Player)
     plot:OwnerInvoked("PickupFish", function(index: number)
         Assert.IntegerPositive(index)
 
+        if not IsPlayerSafe(player) then
+            return false, "You are not in a safe zone!"
+        end
+
         local success = plot:PickupFish(index)
         return success
     end)
 
     plot:OwnerInvoked("BuyPedestal", function(index: number)
         Assert.IntegerPositive(index)
+
+        if not IsPlayerSafe(player) then
+            return false, "You are not in a safe zone!"
+        end
 
         local pedestalCount = plot:Save("Pedestals")::number
         if index ~= pedestalCount + 1 then
