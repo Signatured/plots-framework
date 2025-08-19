@@ -4,6 +4,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local GameSettings = require(game.ServerScriptService.Game.Library.GameSettings)
+local SharedGameSettings = require(game.ReplicatedStorage.Game.Library.GameSettings)
 local Saving = require(game.ServerScriptService.Library.Saving)
 local ServerPlot = require(game.ServerScriptService.Plot.ServerPlot)
 local Assert = require(game.ReplicatedStorage.Library.Assert)
@@ -12,6 +13,8 @@ local PivotPlayer = require(game.ReplicatedStorage.Library.Functions.PivotPlayer
 local Fish = require(game.ServerScriptService.Game.Library.Fish)
 
 local PLOT_COUNT = GameSettings.PlotCount
+local PEDESTAL_COUNT = SharedGameSettings.PedestalCount
+
 local claimedPlots: {[number]: Player} = {}
 local templatePlots: {[number]: Model} = {}
 
@@ -156,6 +159,10 @@ function SetupPlayer(player: Player)
         local pedestalCount = plot:Save("Pedestals")::number
         if index ~= pedestalCount + 1 then
             return false
+        end
+
+        if pedestalCount >= PEDESTAL_COUNT then
+            return false, "Max pedestals reached!"
         end
 
         local cost = PlotTypes.PedestalCost(index)
