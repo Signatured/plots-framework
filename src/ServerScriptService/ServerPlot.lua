@@ -214,7 +214,8 @@ function prototype:RunHeartbeat(dt: number)
 				local isBoosted = boostedTime and workspace:GetServerTimeNow() < boostedTime
 				local basePerSecond = self:GetMoneyPerSecond(index) or 0
 
-				local fishMultiplier = multiplier + (isBoosted and 0.5 or 0)
+				local typeMultiplier = SharedGameSettings.TypeMultipliers[fish.FishData.Type] or 1
+				local fishMultiplier = (multiplier * typeMultiplier) + (isBoosted and 0.5 or 0)
 				local addAmount = math.ceil(basePerSecond * fishMultiplier * wholeSeconds)
 
 				fish.Earnings = (fish.Earnings or 0) + addAmount
