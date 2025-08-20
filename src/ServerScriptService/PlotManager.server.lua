@@ -117,7 +117,6 @@ function SetupPlayer(player: Player)
     local blueprint = ReplicatedStorage:WaitForChild("PlotBlueprint", 9999):Clone()
     local plot = ServerPlot.new(player, blueprint, cframe)
 
-    local lastClaim = workspace:GetServerTimeNow()
     plot:OwnerInvoked("ClaimEarnings", function(index: number)
         Assert.IntegerPositive(index)
 
@@ -125,14 +124,7 @@ function SetupPlayer(player: Player)
             return false, "You are not in a safe zone!"
         end
 
-        if workspace:GetServerTimeNow() - lastClaim < 1 then
-            return false
-        end
-
         local success, amount = plot:ClaimEarnings(index)
-        if success then
-            lastClaim = workspace:GetServerTimeNow()
-        end
         return success, amount
     end)
 
