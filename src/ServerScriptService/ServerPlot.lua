@@ -477,7 +477,7 @@ end
 function prototype:GetMultiplier(): number
     local multiplier = 1
 	local friendBoost = self:Session("FriendBoost") or 0
-	local paidIndex = self:Session("PaidIndex") or 0
+	local paidIndex = self:Save("PaidIndex") or 0
 	local paidMultiplier = 0.5 * paidIndex
 
 	multiplier = multiplier + (Functions.Round(friendBoost / 100, 1) + paidMultiplier)

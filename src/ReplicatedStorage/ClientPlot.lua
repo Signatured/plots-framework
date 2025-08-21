@@ -51,6 +51,7 @@ type Functions<self> = {
     GetMoneyPerSecond: (self, index: number) -> number?,
     GetUpgradeCost: (self, index: number) -> number?,
     CanAfford: (self, cost: number) -> boolean,
+    GetMultiplier: (self) -> number,
 
     ModelCreated: (self, callback: (Model) -> ()) -> (),
 
@@ -269,6 +270,16 @@ function prototype:CanAfford(cost: number): boolean
         return false
     end
     return money >= cost
+end
+
+function prototype:GetMultiplier(): number
+    local multiplier = 1
+	local friendBoost = self:Session("FriendBoost") or 0
+	local paidIndex = self:Save("PaidIndex") or 0
+	local paidMultiplier = 0.5 * paidIndex
+
+	multiplier = multiplier + (Functions.Round(friendBoost / 100, 1) + paidMultiplier)
+	return multiplier
 end
 
 function prototype:Save(key: string)
