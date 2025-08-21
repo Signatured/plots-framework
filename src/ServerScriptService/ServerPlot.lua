@@ -445,6 +445,15 @@ function prototype:UpgradeFish(index: number)
 end
 
 function prototype:PickupFish(index: number)
+    local invLimit = self:Save("InventorySize")::number?
+    local saveData = Saving.Get(self.Owner)
+    if not saveData or not saveData.Inventory or not saveData.PlotSave.Variables.InventorySize then
+        return false
+    end
+    local invCount = #(saveData.Inventory :: {any})
+    if invCount >= (invLimit :: number) then
+        return false
+    end
     local fish = self:GetFish(index)
     if not fish then
         return false
