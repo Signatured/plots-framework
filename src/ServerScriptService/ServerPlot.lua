@@ -358,8 +358,13 @@ function prototype:GetUpgradeCost(index: number): number?
 	if not fishLevel then
 		return nil
 	end
+	local nextLevel = fishLevel + 1
+	if nextLevel > SharedGameSettings.MaxLevel then
+		return nil
+	end
+
     local dir = Directory.Fish[fish.FishId]
-    return math.pow(dir.BaseUpgradeCost, fishLevel)
+	return dir.BaseUpgradeCost * (1.5 ^ (nextLevel - 1))
 end
 
 function prototype:GetSellPrice(index: number): number?

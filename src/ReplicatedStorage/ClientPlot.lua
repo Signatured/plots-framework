@@ -8,6 +8,7 @@ local Event = require(ReplicatedStorage.Library.Modules.Event)
 local Network = require(ReplicatedStorage.Library.Client.Network)
 local Functions = require(ReplicatedStorage.Library.Functions)
 local Directory = require(ReplicatedStorage.Game.Library.Directory)
+local SharedGameSettings = require(ReplicatedStorage.Game.Library.GameSettings)
 
 local PlotTypes = require(ReplicatedStorage.Game.Library.Types.Plots)
 
@@ -260,8 +261,13 @@ function prototype:GetUpgradeCost(index: number): number?
 	if not fishLevel then
 		return nil
 	end
+	local nextLevel = fishLevel + 1
+	if nextLevel > SharedGameSettings.MaxLevel then
+		return nil
+	end
+
     local dir = Directory.Fish[fish.FishId]
-    return math.pow(dir.BaseUpgradeCost, fishLevel)
+	return dir.BaseUpgradeCost * (1.5 ^ (nextLevel - 1))
 end
 
 function prototype:CanAfford(cost: number): boolean
