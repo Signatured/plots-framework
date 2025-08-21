@@ -40,7 +40,6 @@ type Fields<self> = {
 
 	Destroying: Event.EventInstance,
 	Heartbeat: Event.EventInstance,
-	PedestalAdded: Event.EventInstance,
 	FishAdded: Event.EventInstance,
 	FishRemoved: Event.EventInstance
 }
@@ -72,7 +71,6 @@ type Functions<self> = {
 	AddMoney: (self, amount: number) -> boolean,
 	CanAfford: (self, amount: number) -> boolean,
 	GetMultiplier: (self) -> number,
-	AddPedestal: (self) -> boolean,
 
 	Join: (self, player: Player) -> boolean,
 	Unjoin: (self, player: Player) -> boolean,
@@ -486,19 +484,6 @@ function prototype:GetMultiplier(): number
 	return multiplier
 end
 
-function prototype:AddPedestal(): boolean
-	local pedestals = self:Save("Pedestals")::number
-	if pedestals >= SharedGameSettings.PedestalCount then
-		return false
-	end
-	self:SaveSet("Pedestals", pedestals + 1)
-	task.spawn(function()
-		BadgeManager.GiveBadgeByName(self.Owner, "NewStand")
-	end)
-	self.PedestalAdded:FireAsync(pedestals + 1)
-	return true
-end
-
 function prototype:Join(player: Player): boolean
 	if self:IsDestroyed() then
 		return false
@@ -620,7 +605,6 @@ function module.new(owner: Player, blueprint: Model, cFrame: CFrame): Type
 		Destroying = Event.new(),
 		Heartbeat = Event.new(),
 		FishAdded = Event.new(),
-		PedestalAdded = Event.new(),
 		FishRemoved = Event.new()
 	}
 	

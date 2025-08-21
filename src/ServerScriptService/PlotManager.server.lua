@@ -182,38 +182,6 @@ function SetupPlayer(player: Player)
         return success
     end)
 
-    plot:OwnerInvoked("BuyPedestal", function(index: number)
-        Assert.IntegerPositive(index)
-
-        if not IsPlayerSafe(player) then
-            return false, "You are not in a safe zone!"
-        end
-
-        local pedestalCount = plot:Save("Pedestals")::number
-        if index ~= pedestalCount + 1 then
-            return false
-        end
-
-        if pedestalCount >= PEDESTAL_COUNT then
-            return false, "Max pedestals reached!"
-        end
-
-        local cost = PlotTypes.PedestalCost(index)
-        local canAfford = plot:CanAfford(cost)
-
-        if not canAfford then
-            return false, "You cannot afford this!"
-        end
-
-        local success = plot:AddMoney(-cost)
-        if not success then
-            return false
-        end
-
-        local addSuccess = plot:AddPedestal()
-        return addSuccess
-    end)
-
     plot:OwnerInvoked("DeleteFish", function(uid: string)
         local fish = Fish.GetFromInventory(player, uid)
         if not fish then
@@ -229,10 +197,6 @@ function SetupPlayer(player: Player)
         Assert.IntegerPositive(index)
         
         if player == plot:GetOwner() then
-            return false
-        end
-
-        if index > plot:Save("Pedestals")::number then
             return false
         end
 
