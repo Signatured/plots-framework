@@ -52,6 +52,7 @@ type Functions<self> = {
     GetFishOfflineEarnings: (self, index: number) -> number,
     GetMoneyPerSecond: (self, index: number) -> number?,
     GetUpgradeCost: (self, index: number) -> number?,
+    GetSellPrice: (self, index: number) -> number?,
     CanAfford: (self, cost: number) -> boolean,
     GetMultiplier: (self) -> number,
 
@@ -269,6 +270,14 @@ function prototype:GetUpgradeCost(index: number): number?
 
     local dir = Directory.Fish[fish.FishId]
 	return dir.BaseUpgradeCost * (1.5 ^ (nextLevel - 1))
+end
+
+function prototype:GetSellPrice(index: number): number?
+	local moneyPerSecond = self:GetMoneyPerSecond(index)
+	if not moneyPerSecond then
+		return nil
+	end
+    return math.ceil(moneyPerSecond * 20)
 end
 
 function prototype:CanAfford(cost: number): boolean
