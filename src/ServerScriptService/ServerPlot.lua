@@ -635,7 +635,7 @@ function module.new(owner: Player, blueprint: Model, cFrame: CFrame): Type
 		SaveVariables = plotSave.Variables,
 		SaveVariableUpdates = {},
 		SaveVariableChanged = {},
-		SessionVariables = defaultSessionVariables,
+		SessionVariables = Functions.DeepCopy(defaultSessionVariables),
 		SessionVariableUpdates = {},
 		SessionVariableChanged = {},
 		LocalVariables = {},
@@ -645,6 +645,8 @@ function module.new(owner: Player, blueprint: Model, cFrame: CFrame): Type
 		FishAdded = Event.new(),
 		FishRemoved = Event.new()
 	}
+
+	print(self.SessionVariables.PlayerBoosts)
 	
 	local self: Type = setmetatable(self::any, Metatable)
 
