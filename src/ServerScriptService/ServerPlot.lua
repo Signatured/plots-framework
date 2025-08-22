@@ -487,9 +487,9 @@ function prototype:GetMoney(): number
 end
 
 function prototype:AddMoney(amount: number)
-	Assert.Number(amount)
+	Assert.Integer(amount)
 
-    local money = math.max(0, (self:Save("Money") or 0) + amount)
+    local money = math.ceil(math.max(0, (self:Save("Money") or 0) + amount))
     self:SaveSet("Money", money)
 
 	task.spawn(function()
