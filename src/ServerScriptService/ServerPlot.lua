@@ -16,6 +16,7 @@ local Assert = require(ReplicatedStorage.Library.Assert)
 local Fish = require(ServerScriptService.Game.Library.Fish)
 local BadgeManager = require(ServerScriptService.Game.Library.BadgeManager)
 local SharedGameSettings = require(ReplicatedStorage.Game.Library.GameSettings)
+local Gamepasses = require(ServerScriptService.Library.Gamepasses)
 
 type Fields<self> = {
 	Id: number,
@@ -390,7 +391,22 @@ function prototype:ClaimEarnings(index: number): (boolean, number?)
 	if not fish then
 		return false
 	end
+	local save = Saving.Get(self.Owner)
+	if not save then
+		return false
+	end
+	local giveUpgradeCost = not save.FinishedTutorial and not save.TutorialClaim
 	local total = (fish.Earnings or 0) + (fish.OfflineEarnings or 0)
+
+	if giveUpgradeCost then
+		local upgradeCost = self:GetUpgradeCost(index)
+		if upgradeCost then
+			total = math.max(total, upgradeCost)
+
+			save.TutorialClaim = true
+		end
+	end
+
 	local payout = math.floor(total)
 	if payout <= 0 then
 		return false
@@ -493,6 +509,11 @@ function prototype:GetMultiplier(): number
 	local friendBoost = self:Session("FriendBoost") or 0
 	local paidIndex = self:Save("PaidIndex") or 0
 	local paidMultiplier = 0.5 * paidIndex
+
+	local ownsGamepass = Gamepasses.Owns(self.Owner, "Double Money")
+	if ownsGamepass then
+		multiplier = multiplier + 1
+	end
 
 	multiplier = multiplier + (Functions.Round(friendBoost / 100, 1) + paidMultiplier)
 	return multiplier

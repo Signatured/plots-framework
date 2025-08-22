@@ -9,6 +9,7 @@ local Network = require(ReplicatedStorage.Library.Client.Network)
 local Functions = require(ReplicatedStorage.Library.Functions)
 local Directory = require(ReplicatedStorage.Game.Library.Directory)
 local SharedGameSettings = require(ReplicatedStorage.Game.Library.GameSettings)
+local Save = require(ReplicatedStorage.Library.Client.Save)
 
 local PlotTypes = require(ReplicatedStorage.Game.Library.Types.Plots)
 
@@ -279,10 +280,17 @@ function prototype:CanAfford(cost: number): boolean
 end
 
 function prototype:GetMultiplier(): number
+    local doubleMoneyGamepassId = 1407961498
     local multiplier = 1
 	local friendBoost = self:Session("FriendBoost") or 0
 	local paidIndex = self:Save("PaidIndex") or 0
 	local paidMultiplier = 0.5 * paidIndex
+
+    local save = Save.Get()
+    local ownsGamepass = save and save.Gamepasses and save.Gamepasses[tostring(doubleMoneyGamepassId)] or false
+	if ownsGamepass then
+		multiplier = multiplier + 1
+	end
 
 	multiplier = multiplier + (Functions.Round(friendBoost / 100, 1) + paidMultiplier)
 	return multiplier
