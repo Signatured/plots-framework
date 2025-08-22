@@ -575,6 +575,8 @@ local Metatable = table.freeze({ __index = table.freeze(prototype) })
 
 local module = {}
 
+module.Created = Created
+
 local defaultSessionVariables = {
 	FriendBoost = 0,
 	PlayerBoosts = {},
