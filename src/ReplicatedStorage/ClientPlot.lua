@@ -361,7 +361,6 @@ local function applySessionUpdates(self: Type, updates: {{any}})
         self.SessionVariables[key] = val
 
         local event = self.SessionVariableChanged[key]
-        print("event", self.SessionVariableChanged, event)
         if event then
             event:FireAsync(val, oldVal)
         end
@@ -382,7 +381,9 @@ local function handlePacket(self: Type, packet: PlotTypes.Packet)
             self.ModelAdded:FireAsync(self:GetModel())
         end
     elseif ptype == "Leave" then
-        -- Optional cleanup or visibility changes
+        if not self:IsDestroyed() then
+            self:Destroy()
+        end
     elseif ptype == "Update" then
         local payload = packet.Data or {}
         applySaveUpdates(self, payload.Save)
