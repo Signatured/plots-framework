@@ -16,3 +16,18 @@ ClientPlot.OnLocalAndCreated(function(plot: ClientPlot.Type)
         Functions.PivotPlayer(localPlayer, teleportCFrame)
     end)
 end)
+
+ClientPlot.OnAllAndCreated(function(plot: ClientPlot.Type)
+    if plot:IsLocal() then
+        return
+    end
+
+    local model = plot:WaitModel()
+    if model then
+        local advertSign = model:FindFirstChild("AdvertSign")::BasePart
+
+        if advertSign then
+            advertSign:Destroy()
+        end
+    end
+end)

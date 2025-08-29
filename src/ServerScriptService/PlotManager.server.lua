@@ -47,6 +47,9 @@ function SetupTemplates()
         local groupOffer = model:WaitForChild("GroupOffer")::BasePart
         groupOffer:Destroy()
 
+        local advertSign = model:WaitForChild("AdvertSign")::BasePart
+        advertSign:Destroy()
+
 		model:PivotTo(loc.CFrame)
 		model.Parent = templateFolder
 		templatePlots[i] = model
