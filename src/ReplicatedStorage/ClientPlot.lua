@@ -294,6 +294,11 @@ function prototype:GetMultiplier(): number
 	local friendBoost = self:Session("FriendBoost") or 0
 	local paidIndex = self:Save("PaidIndex") or 0
 	local paidMultiplier = 0.5 * paidIndex
+    local questExpireTime = self:Session("DailyQuests_Multiplied")
+    local questMultiplier = 0
+	if questExpireTime and workspace:GetServerTimeNow() < questExpireTime then
+		questMultiplier = 1
+	end
 
     local save = Save.Get()
     local ownsGamepass = save and save.Gamepasses and save.Gamepasses[tostring(doubleMoneyGamepassId)] or false
@@ -301,7 +306,7 @@ function prototype:GetMultiplier(): number
 		multiplier = multiplier + 1
 	end
 
-	multiplier = multiplier + (Functions.Round(friendBoost / 100, 1) + paidMultiplier)
+	multiplier = multiplier + (Functions.Round(friendBoost / 100, 1) + paidMultiplier + questMultiplier)
 	return multiplier
 end
 
