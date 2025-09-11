@@ -40,7 +40,7 @@ type Functions<self> = {
     GetOwner: (self) -> Player,
     GetCFrame: (self) -> CFrame,
     GetModel: (self) -> Model?,
-    WaitModel: (self) -> Model,
+    YieldModel: (self) -> Model,
     IsLocal: (self) -> boolean,
 
     GetSpawnCFrame: (self) -> CFrame,
@@ -68,9 +68,9 @@ type Functions<self> = {
     Fire: (self, type: string, ...any) -> (),
 
     Save: (self, key: string) -> any,
-	SaveChanged: (self, key: string) -> Event.EventInstance,
+	SaveUpdated: (self, key: string) -> Event.EventInstance,
 	Session: (self, key: string) -> any,
-	SessionChanged: (self, key: string) -> Event.EventInstance,
+	SessionUpdated: (self, key: string) -> Event.EventInstance,
 	Local: (self, key: any) -> any,
 	LocalSet:(self, key: any, val: any) -> (),
 }
@@ -79,8 +79,8 @@ export type Type = Fields<Type> & Functions<Type>
 
 local prototype = {}::(Functions<Type>)
 
-local GlobalById: {[number]: Type} = {}
-local GlobalByPlayer: {[Player]: Type} = {}
+local Plots: {[number]: Type} = {}
+local PlotsByPlayer: {[Player]: Type} = {}
 
 local Created = Event.new()
 local Destroying = Event.new()
@@ -113,7 +113,7 @@ function prototype:GetModel(): Model?
     return model
 end
 
-function prototype:WaitModel(): Model
+function prototype:YieldModel(): Model
     while not self:GetModel() do
         if self:IsDestroyed() then
             error("Plot destroyed while waiting for model")
@@ -134,7 +134,7 @@ function prototype:ModelCreated(callback: (Model) -> ())
 end
 
 function prototype:GetSpawnCFrame(): CFrame
-    local model = self:WaitModel()
+    local model = self:YieldModel()
     local spawnPart = model:FindFirstChild("Spawn")::BasePart
     return spawnPart:GetPivot()
 end
@@ -160,26 +160,36 @@ function prototype:IsDestroyed()
 end
 
 function prototype:Destroy(): boolean
-    if self.Destroyed then
-        return false
-    end
-    self.Destroyed = true
+	if self.Destroyed then
+		return false
+	end
+	self.Destroyed = true
 
-    if GlobalById[self.Id] == self then
-        GlobalById[self.Id] = nil
-    end
-    if GlobalByPlayer[self.Owner] == self then
-        GlobalByPlayer[self.Owner] = nil
-    end
+	-- Notify first so listeners can clean up while model/registries still exist
+	self.Destroying:FireAsync()
+	Destroying:FireAsync(self)
 
-    local model = self:GetModel()
-    if model then
-        model:Destroy()
-    end
+	-- Unindex
+	if Plots[self.Id] == self then
+		Plots[self.Id] = nil
+	end
+	if self.Owner and PlotsByPlayer[self.Owner] == self then
+		PlotsByPlayer[self.Owner] = nil
+	end
 
-    self.Destroying:FireAsync()
-    Destroying:FireAsync(self)
-    return true
+	-- Model teardown
+	local model = self:GetModel()
+	if model then
+		model:Destroy()
+	end
+
+	-- Disconnect per-instance events
+	self.ModelAdded:Disconnect()
+	self.Destroying:Disconnect()
+	self.Heartbeat:Disconnect()
+	self.RenderStepped:Disconnect()
+
+	return true
 end
 
 function prototype:Fired(type: string, handler: (...any) -> (...any))
@@ -314,7 +324,7 @@ function prototype:Save(key: string)
     return self.SaveVariables[key]
 end
 
-function prototype:SaveChanged(key: string): Event.EventInstance
+function prototype:SaveUpdated(key: string): Event.EventInstance
 	local result = self.SaveVariableChanged[key]
 	if not result then
 		result = Event.new()
@@ -327,7 +337,7 @@ function prototype:Session(key: string)
     return self.SessionVariables[key]
 end
 
-function prototype:SessionChanged(key: string): Event.EventInstance
+function prototype:SessionUpdated(key: string): Event.EventInstance
 	local result = self.SessionVariableChanged[key]
 	if not result then
 		result = Event.new()
@@ -413,19 +423,19 @@ local function handlePacket(self: Type, packet: PlotTypes.Packet)
 end
 
 function module.GetById(id: number): Type
-    return GlobalById[id]
+    return Plots[id]
 end
 
 function module.GetAll(): {Type}
     local list = {}
-    for _, inst in pairs(GlobalById) do
+    for _, inst in pairs(Plots) do
         table.insert(list, inst)
     end
     return list
 end
 
 function module.GetLocal(): Type?
-    return GlobalByPlayer[Players.LocalPlayer]
+    return PlotsByPlayer[Players.LocalPlayer]
 end
 
 function module.OnLocalAndCreated(callback: ((Type) -> ())?): Type?
@@ -484,9 +494,9 @@ function module.NewFromServer(packet: PlotTypes.Packet)
         Heartbeat = Event.new(),
         RenderStepped = Event.new(),
     }::any, Metatable)
-    GlobalById[id] = self
+    Plots[id] = self
     if self.Owner then
-        GlobalByPlayer[self.Owner] = self
+        PlotsByPlayer[self.Owner] = self
     end
     handlePacket(self, packet)
     Created:FireAsync(self)
@@ -496,9 +506,9 @@ end
 
 function HandlePackets(packets: {PlotTypes.Packet})
     for _, packet in ipairs(packets) do
-        local inst = GlobalById[packet.PlotId]
+        local inst = Plots[packet.PlotId]
         if packet.PacketType == "Join" then
-            if inst or GlobalById[packet.PlotId] then
+            if inst or Plots[packet.PlotId] then
                 continue -- already handled
             end
 
@@ -517,7 +527,7 @@ Network.Fired("Plots", function(packets: {PlotTypes.Packet})
 end)
 
 RunService:BindToRenderStep("Plots", Enum.RenderPriority.Last.Value, function(dt)
-    for id, inst in pairs(GlobalById) do
+    for id, inst in pairs(Plots) do
         if not inst:IsDestroyed() then
             Functions.wcall(inst.RunRenderStepped, inst, dt)
         end
@@ -525,7 +535,7 @@ RunService:BindToRenderStep("Plots", Enum.RenderPriority.Last.Value, function(dt
 end)
 
 RunService.Heartbeat:Connect(function(dt)
-    for id, inst in pairs(GlobalById) do
+    for id, inst in pairs(Plots) do
         if not inst:IsDestroyed() then
             Functions.wcall(inst.RunHeartbeat, inst, dt)
         end

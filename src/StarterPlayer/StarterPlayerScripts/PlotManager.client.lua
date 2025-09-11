@@ -22,7 +22,7 @@ ClientPlot.OnAllAndCreated(function(plot: ClientPlot.Type)
         return
     end
 
-    local model = plot:WaitModel()
+    local model = plot:YieldModel()
     if model then
         local advertSign = model:FindFirstChild("AdvertSign")::BasePart
 

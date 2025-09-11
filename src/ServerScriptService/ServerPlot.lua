@@ -85,10 +85,10 @@ type Functions<self> = {
 
 	Save: (self, key: string) -> any,
 	SaveSet: (self, key: string, val: any?) -> any?,
-	SaveChanged: (self, key: string) -> Event.EventInstance,
+	SaveUpdated: (self, key: string) -> Event.EventInstance,
 	Session: (self, key: string) -> any,
 	SessionSet: (self, key: string, val: any?) -> any?,
-	SessionChanged: (self, key: string) -> Event.EventInstance,
+	SessionUpdated: (self, key: string) -> Event.EventInstance,
 	Local: (self, key: any) -> any,
 	LocalSet: (self, key: any, val: any?) -> any?,
 
@@ -133,7 +133,7 @@ function prototype:SaveSet(key: string, val: any?)
     return oldVal
 end
 
-function prototype:SaveChanged(key: string)
+function prototype:SaveUpdated(key: string)
 	local event = self.SaveVariableChanged[key]
 	if not event then
 		event = Event.new()
@@ -167,7 +167,7 @@ function prototype:SessionSet(key: string, val: any?)
 	return oldVal
 end
 
-function prototype:SessionChanged(key: string)
+function prototype:SessionUpdated(key: string)
 	local event = self.SessionVariableChanged[key]
 	if not event then
 		event = Event.new()
