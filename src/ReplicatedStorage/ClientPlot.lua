@@ -29,7 +29,7 @@ type Fields<self> = {
     SessionVariableChanged: {[string]: Event.EventInstance},
     LocalVariables: {[any]: any},
 
-    ModelAdded: Event.EventInstance,
+    ModelLoaded: Event.EventInstance,
     Destroying: Event.EventInstance,
     Heartbeat: Event.EventInstance,
     RenderStepped: Event.EventInstance,
@@ -126,7 +126,7 @@ function prototype:YieldModel(): Model
 end
 
 function prototype:ModelCreated(callback: (Model) -> ())
-    self.ModelAdded:Connect(callback)
+    self.ModelLoaded:Connect(callback)
     local model = self:GetModel()
     if model then
         callback(model)
@@ -184,7 +184,7 @@ function prototype:Destroy(): boolean
 	end
 
 	-- Disconnect per-instance events
-	self.ModelAdded:Disconnect()
+	self.ModelLoaded:Disconnect()
 	self.Destroying:Disconnect()
 	self.Heartbeat:Disconnect()
 	self.RenderStepped:Disconnect()
@@ -402,7 +402,7 @@ local function handlePacket(self: Type, packet: PlotTypes.Packet)
         self.SaveVariables = data.SaveVariables or {}
         self.SessionVariables = data.SessionVariables or {}
         if self:GetModel() then
-            self.ModelAdded:FireAsync(self:GetModel())
+            self.ModelLoaded:FireAsync(self:GetModel())
         end
     elseif ptype == "Leave" then
         if not self:IsDestroyed() then
@@ -489,7 +489,7 @@ function module.NewFromServer(packet: PlotTypes.Packet)
         SessionVariableChanged = {},
         LocalVariables = {},
 
-        ModelAdded = Event.new(),
+        ModelLoaded = Event.new(),
         Destroying = Event.new(),
         Heartbeat = Event.new(),
         RenderStepped = Event.new(),
