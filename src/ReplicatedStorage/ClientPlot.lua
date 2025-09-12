@@ -10,6 +10,7 @@ local Functions = require(ReplicatedStorage.Library.Functions)
 local Directory = require(ReplicatedStorage.Game.Library.Directory)
 local SharedGameSettings = require(ReplicatedStorage.Game.Library.GameSettings)
 local Save = require(ReplicatedStorage.Library.Client.Save)
+local GamepassCmds = require(ReplicatedStorage.Library.Client.GamepassCmds)
 
 local PlotTypes = require(ReplicatedStorage.Game.Library.Types.Plots)
 
@@ -261,7 +262,33 @@ function prototype:GetMoneyPerSecond(index: number): number?
 		return nil
 	end
     local dir = Directory.Fish[fish.FishId]
-    return dir.MoneyPerSecond * fish.FishData.Level
+    local base = dir.MoneyPerSecond * fish.FishData.Level
+
+    -- Exclusive rarity special case: scale by best non-Exclusive fish if BestFishMultiplier is set
+    local rarity = dir.Rarity
+    local bestMult = dir.BestFishMultiplier
+    if rarity and rarity._id == "Exclusive" and typeof(bestMult) == "number" then
+        local fishes = self:GetAllFish()
+        local bestBase = 0
+        for indexStr, other in pairs(fishes) do
+            local otherIndex = tonumber(indexStr)
+            if otherIndex and otherIndex ~= index then
+                local otherDir = Directory.Fish[other.FishId]
+                local otherRarity = otherDir and otherDir.Rarity
+                if otherDir and (not otherRarity or otherRarity._id ~= "Exclusive") then
+                    local otherBase = otherDir.MoneyPerSecond * (other.FishData.Level or 1)
+                    if otherBase > bestBase then
+                        bestBase = otherBase
+                    end
+                end
+            end
+        end
+        local exclusiveBased = bestBase * bestMult
+        -- Ensure we never go below the Exclusive fish's own directory MPS
+        base = math.max(base, exclusiveBased)
+    end
+
+    return base
 end
 
 function prototype:GetUpgradeCost(index: number): number?
@@ -287,7 +314,9 @@ function prototype:GetSellPrice(index: number): number?
 	if not moneyPerSecond then
 		return nil
 	end
-    return math.ceil(moneyPerSecond * 20)
+    local base = math.ceil(moneyPerSecond * 20)
+    local ownsDouble = GamepassCmds.Owns("Double Money")
+    return ownsDouble and (base * 2) or base
 end
 
 function prototype:CanAfford(cost: number): boolean

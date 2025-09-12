@@ -17,6 +17,7 @@ local Fish = require(ServerScriptService.Game.Library.Fish)
 local BadgeManager = require(ServerScriptService.Game.Library.BadgeManager)
 local SharedGameSettings = require(ReplicatedStorage.Game.Library.GameSettings)
 local Gamepasses = require(ServerScriptService.Library.Gamepasses)
+local GamepassDirectory = require(ReplicatedStorage.Game.Library.Directory.Gamepasses)
 
 type Fields<self> = {
 	Id: number,
@@ -346,8 +347,34 @@ function prototype:GetMoneyPerSecond(index: number): number?
 	if not fish then
 		return nil
 	end
-    local dir = Directory.Fish[fish.FishId]
-    return dir.MoneyPerSecond * fish.FishData.Level
+	local dir = Directory.Fish[fish.FishId]
+	local base = dir.MoneyPerSecond * fish.FishData.Level
+
+	-- Exclusive rarity special case: scale by best non-Exclusive fish if BestFishMultiplier is set
+	local rarity = dir.Rarity
+	local bestMult = dir.BestFishMultiplier
+	if rarity and rarity._id == "Exclusive" and typeof(bestMult) == "number" then
+		local fishes = self:GetAllFish()
+		local bestBase = 0
+		for indexStr, other in pairs(fishes) do
+			local otherIndex = tonumber(indexStr)
+			if otherIndex and otherIndex ~= index then
+				local otherDir = Directory.Fish[other.FishId]
+				local otherRarity = otherDir and otherDir.Rarity
+				if otherDir and (not otherRarity or otherRarity._id ~= "Exclusive") then
+					local otherBase = otherDir.MoneyPerSecond * (other.FishData.Level or 1)
+					if otherBase > bestBase then
+						bestBase = otherBase
+					end
+				end
+			end
+		end
+		local exclusiveBased = bestBase * bestMult
+		-- Ensure we never go below the Exclusive fish's own directory MPS
+		base = math.max(base, exclusiveBased)
+	end
+
+	return base
 end
 
 function prototype:GetUpgradeCost(index: number): number?
@@ -373,7 +400,10 @@ function prototype:GetSellPrice(index: number): number?
 	if not moneyPerSecond then
 		return nil
 	end
-    return math.ceil(moneyPerSecond * 20)
+	local base = math.ceil(moneyPerSecond * 20)
+	local schema = GamepassDirectory["Double Money"]
+	local ownsDouble = (schema and Gamepasses.Owns(self.Owner, schema.GamepassId)) or Gamepasses.Owns(self.Owner, "Double Money")
+	return ownsDouble and (base * 2) or base
 end
 
 function prototype:GetAllFish(): {[string]: PlotTypes.Fish}
@@ -664,11 +694,13 @@ function module.new(owner: Player, blueprint: Model, cFrame: CFrame): Type
 		if offlineSeconds > 0 then
 			local fishes = self:GetAllFish()
 			local changed = false
-			for _, fish in pairs(fishes) do
+			for indexStr, fish in pairs(fishes) do
 				local dir = Directory.Fish[fish.FishId]
 				if dir then
-					local basePerSecond = dir.MoneyPerSecond * (fish.FishData.Level or 1)
-					fish.OfflineEarnings = math.max(0, (fish.OfflineEarnings or 0) + math.floor(basePerSecond * offlineSeconds))
+					local idx = tonumber(indexStr) or 0
+					local mps = self:GetMoneyPerSecond(idx)
+					local perSecond = (mps ~= nil and mps) or (dir.MoneyPerSecond * (fish.FishData.Level or 1))
+					fish.OfflineEarnings = math.max(0, (fish.OfflineEarnings or 0) + math.floor(perSecond * offlineSeconds))
 					changed = true
 				end
 			end
