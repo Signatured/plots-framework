@@ -371,7 +371,7 @@ function prototype:GetMoneyPerSecond(index: number): number?
 		end
 		local exclusiveBased = bestBase * bestMult
 		-- Ensure we never go below the Exclusive fish's own directory MPS
-		base = math.max(base, exclusiveBased)
+		base = math.ceil(math.max(base, exclusiveBased))
 	end
 
 	return base
