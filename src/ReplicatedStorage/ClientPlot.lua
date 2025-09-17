@@ -11,6 +11,7 @@ local Directory = require(ReplicatedStorage.Game.Library.Directory)
 local SharedGameSettings = require(ReplicatedStorage.Game.Library.GameSettings)
 local Save = require(ReplicatedStorage.Library.Client.Save)
 local GamepassCmds = require(ReplicatedStorage.Library.Client.GamepassCmds)
+local MutationCmds = require(ReplicatedStorage.Game.Library.Client.MutationCmds)
 
 local PlotTypes = require(ReplicatedStorage.Game.Library.Types.Plots)
 
@@ -278,7 +279,8 @@ function prototype:GetMoneyPerSecond(index: number): number?
                 if otherDir and (not otherRarity or otherRarity._id ~= "Exclusive") then
                     local otherBase = otherDir.MoneyPerSecond * (other.FishData.Level or 1)
                     local otherTypeMult = SharedGameSettings.TypeMultipliers[other.FishData.Type] or 1
-                    local otherEffective = otherBase * otherTypeMult
+                    local otherMutationMult = MutationCmds.GetMutationMulti(other :: any)
+                    local otherEffective = otherBase * otherTypeMult * otherMutationMult
                     if otherEffective > bestEffectiveBase then
                         bestEffectiveBase = otherEffective
                     end

@@ -18,6 +18,7 @@ local BadgeManager = require(ServerScriptService.Game.Library.BadgeManager)
 local SharedGameSettings = require(ReplicatedStorage.Game.Library.GameSettings)
 local Gamepasses = require(ServerScriptService.Library.Gamepasses)
 local GamepassDirectory = require(ReplicatedStorage.Game.Library.Directory.Gamepasses)
+local Mutations = require(ServerScriptService.Game.Library.Mutations)
 
 type Fields<self> = {
 	Id: number,
@@ -215,7 +216,8 @@ function prototype:RunHeartbeat(dt: number)
 				local basePerSecond = self:GetMoneyPerSecond(index) or 0
 
 				local typeMultiplier = SharedGameSettings.TypeMultipliers[fish.FishData.Type] or 1
-				local fishMultiplier = (multiplier * typeMultiplier) + (isBoosted and 0.5 or 0)
+				local mutationMultiplier = Mutations.GetMutationMulti(fish :: any)
+				local fishMultiplier = (multiplier * typeMultiplier * mutationMultiplier) + (isBoosted and 0.5 or 0)
 				local addAmount = math.ceil(basePerSecond * fishMultiplier * wholeSeconds)
 
 				fish.Earnings = (fish.Earnings or 0) + addAmount
@@ -362,10 +364,11 @@ function prototype:GetMoneyPerSecond(index: number): number?
 				local otherDir = Directory.Fish[other.FishId]
 				local otherRarity = otherDir and otherDir.Rarity
 				if otherDir and (not otherRarity or otherRarity._id ~= "Exclusive") then
-					-- Include the other fish's type multiplier when selecting the best base
+					-- Include the other fish's type and mutation multipliers when selecting the best base
 					local otherBase = otherDir.MoneyPerSecond * (other.FishData.Level or 1)
 					local otherTypeMult = SharedGameSettings.TypeMultipliers[other.FishData.Type] or 1
-					local otherEffective = otherBase * otherTypeMult
+					local otherMutationMult = Mutations.GetMutationMulti(other :: any)
+					local otherEffective = otherBase * otherTypeMult * otherMutationMult
 					if otherEffective > bestEffectiveBase then
 						bestEffectiveBase = otherEffective
 					end
