@@ -269,7 +269,7 @@ function prototype:GetMoneyPerSecond(index: number): number?
     local bestMult = dir.BestFishMultiplier
     if rarity and rarity._id == "Exclusive" and typeof(bestMult) == "number" then
         local fishes = self:GetAllFish()
-        local bestBase = 0
+        local bestEffectiveBase = 0
         for indexStr, other in pairs(fishes) do
             local otherIndex = tonumber(indexStr)
             if otherIndex and otherIndex ~= index then
@@ -277,13 +277,15 @@ function prototype:GetMoneyPerSecond(index: number): number?
                 local otherRarity = otherDir and otherDir.Rarity
                 if otherDir and (not otherRarity or otherRarity._id ~= "Exclusive") then
                     local otherBase = otherDir.MoneyPerSecond * (other.FishData.Level or 1)
-                    if otherBase > bestBase then
-                        bestBase = otherBase
+                    local otherTypeMult = SharedGameSettings.TypeMultipliers[other.FishData.Type] or 1
+                    local otherEffective = otherBase * otherTypeMult
+                    if otherEffective > bestEffectiveBase then
+                        bestEffectiveBase = otherEffective
                     end
                 end
             end
         end
-        local exclusiveBased = bestBase * bestMult
+        local exclusiveBased = bestEffectiveBase * bestMult
         -- Ensure we never go below the Exclusive fish's own directory MPS
         base = math.ceil(math.max(base, exclusiveBased))
     end
