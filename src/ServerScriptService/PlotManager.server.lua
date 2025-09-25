@@ -50,6 +50,9 @@ function SetupTemplates()
         local advertSign = model:WaitForChild("AdvertSign")::BasePart
         advertSign:Destroy()
 
+        local lockButton = model:WaitForChild("LockButton")::BasePart
+        lockButton:Destroy()
+
 		model:PivotTo(loc.CFrame)
 		model.Parent = templateFolder
 		templatePlots[i] = model
