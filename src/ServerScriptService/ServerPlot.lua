@@ -437,7 +437,7 @@ function prototype:ClaimEarnings(index: number): (boolean, number?)
 	if giveUpgradeCost then
 		local upgradeCost = self:GetUpgradeCost(index)
 		if upgradeCost then
-			total = math.max(total, upgradeCost)
+			total = math.min(math.max(total, upgradeCost), 50_000)
 
 			save.TutorialClaim = true
 		end
