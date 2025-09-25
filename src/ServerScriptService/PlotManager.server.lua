@@ -53,6 +53,9 @@ function SetupTemplates()
         local lockButton = model:WaitForChild("LockButton")::BasePart
         lockButton:Destroy()
 
+        local lock = model:WaitForChild("Lock")::BasePart
+        lock:Destroy()
+
 		model:PivotTo(loc.CFrame)
 		model.Parent = templateFolder
 		templatePlots[i] = model
