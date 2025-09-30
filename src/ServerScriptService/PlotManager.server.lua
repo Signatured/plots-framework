@@ -12,7 +12,8 @@ local PivotPlayer = require(game.ReplicatedStorage.Library.Functions.PivotPlayer
 local Fish = require(game.ServerScriptService.Game.Library.Fish)
 local Functions = require(game.ReplicatedStorage.Library.Functions)
 local Directory = require(game.ReplicatedStorage.Game.Library.Directory)
-local LuckyBlockTypes = require(game.ReplicatedStorage.Game.Library.Types.LuckyBlocks)
+local Network = require(game.ServerScriptService.Library.Network)
+local FishTypes = require(game.ReplicatedStorage.Game.Library.Types.Fish)
 
 local PLOT_COUNT = GameSettings.PlotCount
 
@@ -107,6 +108,22 @@ function IsPlayerSafe(player: Player): boolean
     local position = Player.Optional.Position(player)
 
     return position ~= nil and Functions.IsPositionInPart(position, safeZone)
+end
+
+function CreateFishData(fishId: string, type: FishTypes.fish_type): FishTypes.data_schema
+    local now = workspace:GetServerTimeNow()
+    local uid = Functions.GenerateUID()
+    local fishData: FishTypes.data_schema = {
+        UID = uid,
+        FishId = fishId,
+        Type = type,
+        Shiny = false,
+        Level = 1,
+        CreateTime = now,
+        BaseTime = now,
+    }
+
+    return fishData
 end
 
 function SetupPlayer(player: Player)
@@ -206,7 +223,7 @@ function SetupPlayer(player: Player)
         return true
     end)
 
-    plot:OwnerInvoked("OpenLuckyBlock", function(index: number): (boolean, {LuckyBlockTypes.lucky_block_visual_data}?)
+    plot:OwnerInvoked("OpenLuckyBlock", function(index: number): boolean
         Assert.IntegerPositive(index)
         
         local luckyBlock = plot:GetFish(index)
@@ -242,12 +259,7 @@ function SetupPlayer(player: Player)
 			["Rainbow"] = 1,
 		}
 
-        local data = Fish.Give(player, {
-            FishId = resultFishId,
-            Type = Functions.Lottery(typeChances),
-            Shiny = false,
-            Level = 1
-        })
+        local data = CreateFishData(resultFishId, Functions.Lottery(typeChances))
 
         if data then
             plot:DeleteFish(index)
@@ -256,18 +268,40 @@ function SetupPlayer(player: Player)
             return false
         end
 
+        -- Generate visual data for animation
         local visualData = {}
+        local lastFishId = nil
+        local resultType = data.Type
+        
         for i = 1, 19 do
-            local randomFishId = Functions.Lottery(loot)
-            local randomType = Functions.Lottery(typeChances)
+            local randomFishId, randomType
+            
+            -- Ensure no consecutive duplicate fish IDs
+            repeat
+                randomFishId = Functions.Lottery(loot)
+            until randomFishId ~= lastFishId
+            
+            -- For the last item, ensure type is different from result
+            if i == 19 then
+                repeat
+                    randomType = Functions.Lottery(typeChances)
+                until randomType ~= resultType
+            else
+                randomType = Functions.Lottery(typeChances)
+            end
 
             table.insert(visualData, {
                 FishId = randomFishId,
                 Type = randomType,
             })
+            
+            lastFishId = randomFishId
         end
 
-        return true, visualData
+        -- Broadcast the animation to all players (server authority)
+        Network.FireAll("LuckyBlockAnimation", tostring(plot:GetId()), index, visualData)
+
+        return true
     end)
 
     local boostTime = 60 * 5
