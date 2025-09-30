@@ -11,6 +11,8 @@ local Assert = require(game.ReplicatedStorage.Library.Assert)
 local PivotPlayer = require(game.ReplicatedStorage.Library.Functions.PivotPlayer)
 local Fish = require(game.ServerScriptService.Game.Library.Fish)
 local Functions = require(game.ReplicatedStorage.Library.Functions)
+local Directory = require(game.ReplicatedStorage.Game.Library.Directory)
+local LuckyBlockTypes = require(game.ReplicatedStorage.Game.Library.Types.LuckyBlocks)
 
 local PLOT_COUNT = GameSettings.PlotCount
 
@@ -202,6 +204,70 @@ function SetupPlayer(player: Player)
 
         Fish.Take(player, uid)
         return true
+    end)
+
+    plot:OwnerInvoked("OpenLuckyBlock", function(index: number): (boolean, {LuckyBlockTypes.lucky_block_visual_data}?)
+        Assert.IntegerPositive(index)
+        
+        local luckyBlock = plot:GetFish(index)
+        if not luckyBlock then
+            return false
+        end
+
+        local dir = Directory.Fish[luckyBlock.FishId]
+        if not dir then
+            return false
+        end
+
+        if not dir.LuckyBlockId then
+            return false
+        end
+
+        local luckyBlockDir = Directory.LuckyBlocks[dir.LuckyBlockId]
+        if not luckyBlockDir then
+            return false
+        end
+
+        local loot = luckyBlockDir.Loot
+        local resultFishId = Functions.Lottery(loot)
+
+        if not resultFishId then
+            return false
+        end
+
+        local typeChances = {
+			["Normal"] = 79,
+			["Shiny"] = 15,
+			["Gold"] = 5,
+			["Rainbow"] = 1,
+		}
+
+        local data = Fish.Give(player, {
+            FishId = resultFishId,
+            Type = Functions.Lottery(typeChances),
+            Shiny = false,
+            Level = 1
+        })
+
+        if data then
+            plot:DeleteFish(index)
+            plot:CreateFish(data, index)
+        else
+            return false
+        end
+
+        local visualData = {}
+        for i = 1, 19 do
+            local randomFishId = Functions.Lottery(loot)
+            local randomType = Functions.Lottery(typeChances)
+
+            table.insert(visualData, {
+                FishId = randomFishId,
+                Type = randomType,
+            })
+        end
+
+        return true, visualData
     end)
 
     local boostTime = 60 * 5
