@@ -273,7 +273,8 @@ function SetupPlayer(player: Player)
         local lastFishId = nil
         local resultType = data.Type
         
-        for i = 1, 19 do
+        local totalVisualData = 29
+        for i = 1, totalVisualData do
             local randomFishId, randomType
             
             -- Ensure no consecutive duplicate fish IDs
@@ -282,7 +283,7 @@ function SetupPlayer(player: Player)
             until randomFishId ~= lastFishId
             
             -- For the last item, ensure type is different from result
-            if i == 19 then
+            if i == totalVisualData then
                 repeat
                     randomType = Functions.Lottery(typeChances)
                 until randomType ~= resultType
