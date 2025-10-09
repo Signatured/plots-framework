@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Player = require(game.ReplicatedStorage.Library.Player)
 local GameSettings = require(game.ServerScriptService.Game.Library.GameSettings)
+local SharedGameSettings = require(game.ReplicatedStorage.Game.Library.GameSettings)
 local Saving = require(game.ServerScriptService.Library.Saving)
 local ServerPlot = require(game.ServerScriptService.Plot.ServerPlot)
 local Assert = require(game.ReplicatedStorage.Library.Assert)
@@ -60,6 +61,9 @@ function SetupTemplates()
 
         local lock = model:WaitForChild("Lock")::BasePart
         lock:Destroy()
+
+        local secondFloor = model:WaitForChild("SecondFloor")::BasePart
+        secondFloor:Destroy()
 
 		model:PivotTo(loc.CFrame)
 		model.Parent = templateFolder
@@ -166,6 +170,17 @@ function SetupPlayer(player: Player)
 
         if not IsPlayerSafe(player) then
             return false, "You are not in a safe zone!"
+        end
+
+        -- Check if player has access to this pedestal based on ExtraFloors
+        local extraFloors = plot:Save("ExtraFloors")
+        local accessibleCount = SharedGameSettings.DefaultPedestalCount
+        if extraFloors and extraFloors > 0 then
+            accessibleCount = SharedGameSettings.ExtraFloorPedestalCounts[extraFloors] or SharedGameSettings.DefaultPedestalCount
+        end
+        
+        if index > accessibleCount then
+            return false, "You don't have access to this pedestal yet!"
         end
 
         local fishData = Fish.GetFromInventory(player, uid)
