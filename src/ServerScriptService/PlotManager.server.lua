@@ -14,6 +14,8 @@ local Functions = require(game.ReplicatedStorage.Library.Functions)
 local Directory = require(game.ReplicatedStorage.Game.Library.Directory)
 local Network = require(game.ServerScriptService.Library.Network)
 local FishTypes = require(game.ReplicatedStorage.Game.Library.Types.Fish)
+local Index = require(game.ServerScriptService.Game.Library.Index)
+local PlotTypes = require(game.ReplicatedStorage.Game.Library.Types.Plots)
 
 local PLOT_COUNT = GameSettings.PlotCount
 
@@ -223,6 +225,27 @@ function SetupPlayer(player: Player)
         return true
     end)
 
+    plot:OwnerInvoked("PurchaseExtraFloor", function(id: number)
+        Assert.IntegerPositive(id)
+
+        local price = PlotTypes.FloorPrices[id]
+        if not price then
+            return false, "Invalid floor id!"
+        end
+
+        if plot:Save("ExtraFloors") >= id then
+            return false, "You already have this floor!"
+        end
+
+        if not plot:CanAfford(price) then
+            return false, "You cannot afford this floor!"
+        end
+
+        plot:AddMoney(-price)
+        plot:SaveSet("ExtraFloors", id)
+        return true
+    end)
+
     plot:OwnerInvoked("OpenLuckyBlock", function(index: number): boolean
         Assert.IntegerPositive(index)
         
@@ -260,6 +283,10 @@ function SetupPlayer(player: Player)
 		}
 
         local data = CreateFishData(resultFishId, Functions.Lottery(typeChances))
+
+        task.spawn(function()
+            Index.Add(player, data.FishId, data.Type, data.Mutation)
+        end)
 
         if data then
             plot:DeleteFish(index)
