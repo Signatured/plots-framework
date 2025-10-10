@@ -53,7 +53,7 @@ function SetupTemplates()
         local groupOffer = model:WaitForChild("GroupOffer")::BasePart
         groupOffer:Destroy()
 
-        local advertSign = model:WaitForChild("AdvertSign")::BasePart
+        local advertSign = model:WaitForChild("DoubleMoneySign")::BasePart
         advertSign:Destroy()
 
         local lockButton = model:WaitForChild("LockButton")::BasePart

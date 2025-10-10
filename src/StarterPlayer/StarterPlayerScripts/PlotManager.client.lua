@@ -24,7 +24,7 @@ ClientPlot.OnAllAndCreated(function(plot: ClientPlot.Type)
 
     local model = plot:YieldModel()
     if model then
-        local advertSign = model:FindFirstChild("AdvertSign")::BasePart
+        local advertSign = model:FindFirstChild("DoubleMoneySign")::BasePart
 
         if advertSign then
             advertSign:Destroy()
