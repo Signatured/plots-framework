@@ -65,6 +65,9 @@ function SetupTemplates()
         local secondFloor = model:WaitForChild("SecondFloor")::BasePart
         secondFloor:Destroy()
 
+        local secondFloorButton = model:WaitForChild("SecondFloorButton")::BasePart
+        secondFloorButton:Destroy()
+
 		model:PivotTo(loc.CFrame)
 		model.Parent = templateFolder
 		templatePlots[i] = model
