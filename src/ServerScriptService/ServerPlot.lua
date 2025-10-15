@@ -19,6 +19,7 @@ local SharedGameSettings = require(ReplicatedStorage.Game.Library.GameSettings)
 local Gamepasses = require(ServerScriptService.Library.Gamepasses)
 local GamepassDirectory = require(ReplicatedStorage.Game.Library.Directory.Gamepasses)
 local Mutations = require(ServerScriptService.Game.Library.Mutations)
+local Traits = require(ServerScriptService.Game.Library.Traits)
 
 type Fields<self> = {
 	Id: number,
@@ -217,7 +218,8 @@ function prototype:RunHeartbeat(dt: number)
 
 				local typeMultiplier = SharedGameSettings.TypeMultipliers[fish.FishData.Type] or 1
 				local mutationMultiplier = Mutations.GetMutationMulti(fish :: any)
-				local fishMultiplier = (multiplier * typeMultiplier * mutationMultiplier) + (isBoosted and 0.5 or 0)
+				local traitMultiplier = Traits.GetTraitMulti(fish :: any)
+				local fishMultiplier = (multiplier * typeMultiplier * mutationMultiplier * traitMultiplier) + (isBoosted and 0.5 or 0)
 				local addAmount = math.ceil(basePerSecond * fishMultiplier * wholeSeconds)
 
 				fish.Earnings = (fish.Earnings or 0) + addAmount
@@ -368,7 +370,8 @@ function prototype:GetMoneyPerSecond(index: number): number?
 					local otherBase = otherDir.MoneyPerSecond * (other.FishData.Level or 1)
 					local otherTypeMult = SharedGameSettings.TypeMultipliers[other.FishData.Type] or 1
 					local otherMutationMult = Mutations.GetMutationMulti(other :: any)
-					local otherEffective = otherBase * otherTypeMult * otherMutationMult
+					local otherTraitMult = Traits.GetTraitMulti(other :: any)
+					local otherEffective = otherBase * otherTypeMult * otherMutationMult * otherTraitMult
 					if otherEffective > bestEffectiveBase then
 						bestEffectiveBase = otherEffective
 					end
@@ -402,11 +405,21 @@ function prototype:GetUpgradeCost(index: number): number?
 end
 
 function prototype:GetSellPrice(index: number): number?
+	local fish = self:GetFish(index)
+	if not fish then
+		return nil
+	end
 	local moneyPerSecond = self:GetMoneyPerSecond(index)
 	if not moneyPerSecond then
 		return nil
 	end
-	local base = math.ceil(moneyPerSecond * 20)
+	
+	-- Apply type, mutation, and trait multipliers to sell price
+	local typeMultiplier = SharedGameSettings.TypeMultipliers[fish.FishData.Type] or 1
+	local mutationMultiplier = Mutations.GetMutationMulti(fish :: any)
+	local traitMultiplier = Traits.GetTraitMulti(fish :: any)
+	
+	local base = math.ceil(moneyPerSecond * typeMultiplier * mutationMultiplier * traitMultiplier * 60 * 5)
 	local schema = GamepassDirectory["Double Money"]
 	local ownsDouble = (schema and Gamepasses.Owns(self.Owner, schema.GamepassId)) or Gamepasses.Owns(self.Owner, "Double Money")
 	return ownsDouble and (base * 2) or base

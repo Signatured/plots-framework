@@ -12,6 +12,7 @@ local SharedGameSettings = require(ReplicatedStorage.Game.Library.GameSettings)
 local Save = require(ReplicatedStorage.Library.Client.Save)
 local GamepassCmds = require(ReplicatedStorage.Library.Client.GamepassCmds)
 local MutationCmds = require(ReplicatedStorage.Game.Library.Client.MutationCmds)
+local TraitCmds = require(ReplicatedStorage.Game.Library.Client.TraitCmds)
 
 local PlotTypes = require(ReplicatedStorage.Game.Library.Types.Plots)
 
@@ -280,7 +281,8 @@ function prototype:GetMoneyPerSecond(index: number): number?
                     local otherBase = otherDir.MoneyPerSecond * (other.FishData.Level or 1)
                     local otherTypeMult = SharedGameSettings.TypeMultipliers[other.FishData.Type] or 1
                     local otherMutationMult = MutationCmds.GetMutationMulti(other :: any)
-                    local otherEffective = otherBase * otherTypeMult * otherMutationMult
+                    local otherTraitMult = TraitCmds.GetTraitMulti(other :: any)
+                    local otherEffective = otherBase * otherTypeMult * otherMutationMult * otherTraitMult
                     if otherEffective > bestEffectiveBase then
                         bestEffectiveBase = otherEffective
                     end
@@ -314,11 +316,21 @@ function prototype:GetUpgradeCost(index: number): number?
 end
 
 function prototype:GetSellPrice(index: number): number?
+	local fish = self:GetFish(index)
+	if not fish then
+		return nil
+	end
 	local moneyPerSecond = self:GetMoneyPerSecond(index)
 	if not moneyPerSecond then
 		return nil
 	end
-    local base = math.ceil(moneyPerSecond * 20)
+	
+	-- Apply type, mutation, and trait multipliers to sell price
+	local typeMultiplier = SharedGameSettings.TypeMultipliers[fish.FishData.Type] or 1
+	local mutationMultiplier = MutationCmds.GetMutationMulti(fish :: any)
+	local traitMultiplier = TraitCmds.GetTraitMulti(fish :: any)
+	
+    local base = math.ceil(moneyPerSecond * typeMultiplier * mutationMultiplier * traitMultiplier * 60 * 5)
     local ownsDouble = GamepassCmds.Owns("Double Money")
     return ownsDouble and (base * 2) or base
 end
