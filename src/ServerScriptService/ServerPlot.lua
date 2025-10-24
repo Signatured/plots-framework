@@ -409,6 +409,15 @@ function prototype:GetSellPrice(index: number): number?
 	if not fish then
 		return nil
 	end
+	
+	-- Check for OverrideSellPrice (for special items like pumpkins)
+	local dir = Directory.Fish[fish.FishId]
+	if dir and dir.OverrideSellPrice then
+		local schema = GamepassDirectory["Double Money"]
+		local ownsDouble = (schema and Gamepasses.Owns(self.Owner, schema.GamepassId)) or Gamepasses.Owns(self.Owner, "Double Money")
+		return ownsDouble and (dir.OverrideSellPrice * 2) or dir.OverrideSellPrice
+	end
+	
 	local moneyPerSecond = self:GetMoneyPerSecond(index)
 	if not moneyPerSecond then
 		return nil

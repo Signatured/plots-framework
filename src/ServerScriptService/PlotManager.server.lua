@@ -194,6 +194,21 @@ function SetupPlayer(player: Player)
             return false
         end
 
+        local fishSchema = Directory.Fish[fishData.FishId]
+        if fishSchema and fishSchema.SpecialItemFish then
+            local pumpkins = {
+                ["Common Pumpkin"] = true,
+                ["Epic Pumpkin"] = true,
+                ["Mythical Pumpkin"] = true,
+            }
+
+            if pumpkins[fishSchema._id] then
+                return false, "You cannot place this, use it for Halloween Quests!"
+            end
+
+            return false, "You cannot place this!"
+        end
+
         local success = plot:CreateFish(fishData, index)
 
         if success then
@@ -304,6 +319,11 @@ function SetupPlayer(player: Player)
 		}
 
         local data = CreateFishData(resultFishId, Functions.Lottery(typeChances))
+        
+        -- 10% chance for Spooky mutation
+        if math.random() <= 0.05 then
+            data.Mutation = "Spooky"
+        end
 
         task.spawn(function()
             Index.Add(player, data.FishId, data.Type, data.Mutation)
@@ -339,10 +359,17 @@ function SetupPlayer(player: Player)
                 randomType = Functions.Lottery(typeChances)
             end
 
-            table.insert(visualData, {
+            local visualItem = {
                 FishId = randomFishId,
                 Type = randomType,
-            })
+            }
+            
+            -- 10% chance for Spooky mutation in visual data
+            if math.random() <= 0.05 then
+                visualItem.Mutation = "Spooky"
+            end
+            
+            table.insert(visualData, visualItem)
             
             lastFishId = randomFishId
         end
