@@ -338,7 +338,7 @@ function prototype:GetSellPrice(index: number): number?
 	local mutationMultiplier = MutationCmds.GetMutationMulti(fish :: any)
 	local traitMultiplier = TraitCmds.GetTraitMulti(fish :: any)
 	
-    local base = math.ceil(moneyPerSecond * typeMultiplier * mutationMultiplier * traitMultiplier * 60 * 5)
+    local base = math.ceil(moneyPerSecond * typeMultiplier * mutationMultiplier * traitMultiplier * 60 * 2)
     local ownsDouble = GamepassCmds.Owns("Double Money")
     return ownsDouble and (base * 2) or base
 end
