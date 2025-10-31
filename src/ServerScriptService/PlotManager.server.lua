@@ -320,9 +320,9 @@ function SetupPlayer(player: Player)
 
         local data = CreateFishData(resultFishId, Functions.Lottery(typeChances))
         
-        -- 10% chance for Spooky mutation
+        -- 10% chance for Haunted mutation
         if math.random() <= 0.05 then
-            data.Mutation = "Spooky"
+            data.Mutation = "Haunted"
         end
 
         task.spawn(function()
@@ -364,9 +364,9 @@ function SetupPlayer(player: Player)
                 Type = randomType,
             }
             
-            -- 10% chance for Spooky mutation in visual data
+            -- 10% chance for Haunted mutation in visual data
             if math.random() <= 0.05 then
-                visualItem.Mutation = "Spooky"
+                visualItem.Mutation = "Haunted"
             end
             
             table.insert(visualData, visualItem)
