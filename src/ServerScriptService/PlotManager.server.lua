@@ -196,15 +196,15 @@ function SetupPlayer(player: Player)
 
         local fishSchema = Directory.Fish[fishData.FishId]
         if fishSchema and fishSchema.SpecialItemFish then
-            local pumpkins = {
-                ["Common Pumpkin"] = true,
-                ["Epic Pumpkin"] = true,
-                ["Mythical Pumpkin"] = true,
-            }
+            -- local pumpkins = {
+            --     ["Common Pumpkin"] = true,
+            --     ["Epic Pumpkin"] = true,
+            --     ["Mythical Pumpkin"] = true,
+            -- }
 
-            if pumpkins[fishSchema._id] then
-                return false, "You cannot place this, use it for Halloween Quests!"
-            end
+            -- if pumpkins[fishSchema._id] then
+            --     return false, "You cannot place this, use it for Halloween Quests!"
+            -- end
 
             return false, "You cannot place this!"
         end
