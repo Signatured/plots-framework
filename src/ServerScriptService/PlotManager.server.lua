@@ -74,6 +74,11 @@ function SetupTemplates()
         local thirdFloorButton = model:WaitForChild("ThirdFloorButton")::BasePart
         thirdFloorButton:Destroy()
 
+        for i = 1, 6 do
+            local thirdFloorPedestalButton = model:WaitForChild(`ThirdFloorPedestalButton{i}`)::BasePart
+            thirdFloorPedestalButton:Destroy()
+        end
+
         local basementDoor = model:WaitForChild("BasementDoor")::BasePart
         basementDoor:Destroy()
 
