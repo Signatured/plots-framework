@@ -5,7 +5,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Player = require(game.ReplicatedStorage.Library.Player)
 local GameSettings = require(game.ServerScriptService.Game.Library.GameSettings)
-local SharedGameSettings = require(game.ReplicatedStorage.Game.Library.GameSettings)
 local Saving = require(game.ServerScriptService.Library.Saving)
 local ServerPlot = require(game.ServerScriptService.Plot.ServerPlot)
 local Assert = require(game.ReplicatedStorage.Library.Assert)
@@ -17,6 +16,7 @@ local Network = require(game.ServerScriptService.Library.Network)
 local FishTypes = require(game.ReplicatedStorage.Game.Library.Types.Fish)
 local Index = require(game.ServerScriptService.Game.Library.Index)
 local PlotTypes = require(game.ReplicatedStorage.Game.Library.Types.Plots)
+local PedestalHelper = require(game.ReplicatedStorage.Game.Library.Directory.PedestalHelper)
 
 local PLOT_COUNT = GameSettings.PlotCount
 
@@ -67,6 +67,12 @@ function SetupTemplates()
 
         local secondFloorButton = model:WaitForChild("SecondFloorButton")::BasePart
         secondFloorButton:Destroy()
+
+        local thirdFloor = model:WaitForChild("ThirdFloor")::BasePart
+        thirdFloor:Destroy()
+
+        local thirdFloorButton = model:WaitForChild("ThirdFloorButton")::BasePart
+        thirdFloorButton:Destroy()
 
         local basementDoor = model:WaitForChild("BasementDoor")::BasePart
         basementDoor:Destroy()
@@ -178,12 +184,10 @@ function SetupPlayer(player: Player)
             return false, "You are not in a safe zone!"
         end
 
-        -- Check if player has access to this pedestal based on ExtraFloors
+        -- Check if player has access to this pedestal based on ExtraFloors and PedestalGroupsUnlocked
         local extraFloors = plot:Save("ExtraFloors")
-        local accessibleCount = SharedGameSettings.DefaultPedestalCount
-        if extraFloors and extraFloors > 0 then
-            accessibleCount = SharedGameSettings.ExtraFloorPedestalCounts[extraFloors] or SharedGameSettings.DefaultPedestalCount
-        end
+        local pedestalGroupsUnlocked = plot:Save("PedestalGroupsUnlocked")
+        local accessibleCount = PedestalHelper.GetAccessiblePedestalCount(extraFloors, pedestalGroupsUnlocked)
         
         if index > accessibleCount then
             return false, "You don't have access to this pedestal yet!"
@@ -269,8 +273,16 @@ function SetupPlayer(player: Player)
             return false, "Invalid floor id!"
         end
 
-        if plot:Save("ExtraFloors") >= id then
+        local currentExtraFloors = plot:Save("ExtraFloors") or 0
+        
+        -- Check if player already has this floor
+        if currentExtraFloors >= id then
             return false, "You already have this floor!"
+        end
+
+        -- Check if player is trying to skip floors (must purchase in order)
+        if currentExtraFloors < id - 1 then
+            return false, "You must purchase the previous floor first!"
         end
 
         if not plot:CanAfford(price) then
@@ -280,6 +292,32 @@ function SetupPlayer(player: Player)
         plot:AddMoney(-price)
         plot:SaveSet("ExtraFloors", id)
         return true
+    end)
+
+    plot:OwnerInvoked("PurchasePedestalGroup", function()
+        local extraFloors = plot:Save("ExtraFloors")
+        if not extraFloors or extraFloors == 0 then
+            return false, "You need to purchase a floor first!"
+        end
+
+        local pedestalGroupsUnlocked = plot:Save("PedestalGroupsUnlocked") or 0
+        
+        -- Get the next group to purchase
+        local nextGroup = PedestalHelper.GetNextPedestalGroup(extraFloors, pedestalGroupsUnlocked)
+        if not nextGroup then
+            return false, "No more pedestal groups available!"
+        end
+
+        -- Check if player can afford it
+        if not plot:CanAfford(nextGroup.Price) then
+            return false, "You cannot afford this pedestal group!"
+        end
+
+        -- Purchase the group
+        plot:AddMoney(-nextGroup.Price)
+        plot:SaveSet("PedestalGroupsUnlocked", pedestalGroupsUnlocked + 1)
+        
+        return true, nextGroup.Pedestals
     end)
 
     plot:OwnerInvoked("OpenLuckyBlock", function(index: number): boolean
