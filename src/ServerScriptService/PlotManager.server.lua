@@ -363,9 +363,9 @@ function SetupPlayer(player: Player)
 
         local data = CreateFishData(resultFishId, Functions.Lottery(typeChances))
         
-        -- 10% chance for YingYang mutation
+        -- 10% chance for YinYang mutation
         if math.random() <= 0.05 then
-            data.Mutation = "YingYang"
+            data.Mutation = "YinYang"
         end
 
         task.spawn(function()
@@ -407,9 +407,9 @@ function SetupPlayer(player: Player)
                 Type = randomType,
             }
             
-            -- 10% chance for YingYang mutation in visual data
+            -- 10% chance for YinYang mutation in visual data
             if math.random() <= 0.05 then
-                visualItem.Mutation = "YingYang"
+                visualItem.Mutation = "YinYang"
             end
             
             table.insert(visualData, visualItem)
